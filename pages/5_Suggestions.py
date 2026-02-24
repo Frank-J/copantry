@@ -1,8 +1,10 @@
 import streamlit as st
 from database import get_ingredients, get_recipes
 from gemini_client import suggest_recipes
+from utils import apply_sidebar_style
 
 st.set_page_config(page_title="Suggestions", page_icon="💡", layout="wide")
+apply_sidebar_style()
 
 st.title("💡 Recipe Suggestions")
 st.markdown("Get AI-powered recipe ideas based on what's in your fridge.")

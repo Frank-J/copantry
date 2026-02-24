@@ -2,8 +2,10 @@ import streamlit as st
 from datetime import date, timedelta
 from database import get_recipes, get_ingredients
 from gemini_client import suggest_calendar_meals, generate_weekly_shopping_list
+from utils import apply_sidebar_style
 
 st.set_page_config(page_title="Meal Planner", page_icon="📅", layout="wide", initial_sidebar_state="collapsed")
+apply_sidebar_style()
 
 st.title("📅 Meal Planner")
 st.markdown("Plan your meals for the week, then generate a shopping list for what you need.")

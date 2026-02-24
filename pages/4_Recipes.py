@@ -1,9 +1,11 @@
 import streamlit as st
+from utils import apply_sidebar_style
 from database import get_recipes, add_recipe, update_recipe, delete_recipe, log_recipe_cooked
 from gemini_client import extract_recipe_from_images, extract_recipe_from_pdf
 from constants import UNITS
 
 st.set_page_config(page_title="Recipes", page_icon="📖", layout="wide")
+apply_sidebar_style()
 
 st.title("📖 Recipes")
 

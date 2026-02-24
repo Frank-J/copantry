@@ -1,8 +1,10 @@
 import streamlit as st
+from utils import apply_sidebar_style
 from database import get_recipes, get_ingredients
 from gemini_client import generate_shopping_list
 
 st.set_page_config(page_title="Shopping List", page_icon="🛒", layout="wide")
+apply_sidebar_style()
 
 st.title("🛒 Shopping List")
 st.markdown("Find out what you need to buy to make a specific recipe.")

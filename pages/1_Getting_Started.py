@@ -1,6 +1,8 @@
 import streamlit as st
+from utils import apply_sidebar_style
 
 st.set_page_config(page_title="Getting Started", page_icon="🚀", layout="wide")
+apply_sidebar_style()
 
 st.title("🚀 Getting Started")
 st.markdown("New here? This page walks you through everything the app can do and how to use it effectively.")

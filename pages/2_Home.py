@@ -1,4 +1,5 @@
 import streamlit as st
+from utils import apply_sidebar_style
 from database import (
     get_ingredients,
     get_recipes,
@@ -10,6 +11,7 @@ from database import (
 from gemini_client import generate_home_insight
 
 st.set_page_config(page_title="Home", page_icon="🏠", layout="wide")
+apply_sidebar_style()
 
 st.title("🏠 Home")
 st.markdown("Your fridge and recipe overview at a glance.")

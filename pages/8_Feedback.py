@@ -1,6 +1,8 @@
 import streamlit as st
+from utils import apply_sidebar_style
 
 st.set_page_config(page_title="Feedback", page_icon="💬", layout="wide")
+apply_sidebar_style()
 
 st.title("💬 Feedback")
 st.markdown("Your feedback helps improve this app. It takes about 2 minutes.")

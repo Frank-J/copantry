@@ -1,5 +1,6 @@
 import streamlit as st
 from database import initialize_db
+from utils import apply_sidebar_style
 
 initialize_db()
 
@@ -8,6 +9,7 @@ st.set_page_config(
     page_icon="🍳",
     layout="wide",
 )
+apply_sidebar_style()
 
 st.title("🍳 Fridge & Recipe Manager")
 st.markdown("*An AI-powered tool for smarter ingredient management and meal planning.*")

@@ -2,8 +2,10 @@ import streamlit as st
 from datetime import datetime
 from database import get_ingredients, add_ingredient, delete_ingredient, update_ingredient_amount
 from constants import UNITS
+from utils import apply_sidebar_style
 
 st.set_page_config(page_title="Fridge", page_icon="🧊", layout="wide")
+apply_sidebar_style()
 
 st.title("🧊 My Fridge")
 st.markdown("Track the ingredients you currently have available.")
