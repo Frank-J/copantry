@@ -4,7 +4,7 @@ from database import get_recipes, get_ingredients
 from gemini_client import suggest_calendar_meals, generate_weekly_shopping_list
 from utils import apply_sidebar_style
 
-st.set_page_config(page_title="Meal Planner", page_icon="📅", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Meal Planner", page_icon="📅", layout="wide")
 apply_sidebar_style()
 
 st.title("📅 Meal Planner")
@@ -58,29 +58,22 @@ else:
     recipe_names = [r["name"] for r in recipes]
     all_options = SPECIAL + recipe_names
 
-    # Calendar grid — one column per day
     day_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    cols = st.columns(7)
 
-    for col, day_date, day_label in zip(cols, week_dates, day_labels):
+    def render_day(col, day_date, day_label):
         date_key = day_date.isoformat()
         sk = f"meal_{date_key}"
         is_today = day_date == today
-
         with col:
             if is_today:
-                st.markdown(f"**{day_label}**  \n🔵 {day_date.strftime('%b %d')}")
+                st.markdown(f"**{day_label} · {day_date.strftime('%b %d')}** 🔵")
             else:
-                st.markdown(f"**{day_label}**  \n{day_date.strftime('%b %d')}")
-
-            # Initialise to unplanned if not yet set
+                st.markdown(f"**{day_label} · {day_date.strftime('%b %d')}**")
             if sk not in st.session_state:
                 st.session_state[sk] = UNPLANNED
-
             current = st.session_state[sk]
             if current not in all_options:
                 current = UNPLANNED
-
             st.selectbox(
                 "Meal",
                 all_options,
@@ -89,9 +82,21 @@ else:
                 label_visibility="collapsed",
             )
 
+    # Row 1: Mon–Thu
+    row1 = st.columns(4)
+    for col, day_date, day_label in zip(row1, week_dates[:4], day_labels[:4]):
+        render_day(col, day_date, day_label)
+
+    st.write("")
+
+    # Row 2: Fri–Sun (3 days, padded with an empty column to keep consistent width)
+    row2 = st.columns(4)
+    for col, day_date, day_label in zip(row2, week_dates[4:], day_labels[4:]):
+        render_day(col, day_date, day_label)
+
     st.divider()
 
-    # Week summary — read values back from session state
+    # Week summary
     week_values = {
         d.isoformat(): st.session_state.get(f"meal_{d.isoformat()}", UNPLANNED)
         for d in week_dates
