@@ -21,22 +21,30 @@ Each part of the app plays a role in that cycle. Here's how to use each one.
 
 st.divider()
 
-st.markdown("""
-## Step-by-Step Guide
+st.markdown("## Step-by-Step Guide")
 
+# Step 1
+st.markdown("""
 ### 🥫 1. Set Up Your Pantry
-Go to the **Pantry** page and log everything you currently have at home — fridge, freezer, and dry goods. Be as specific as you can about amounts — this is what drives recipe suggestions, cookability checks, and your shopping plan.
+
+Log everything you currently have at home — fridge, freezer, and dry goods. Be as specific as you can about amounts and location — this is what drives recipe suggestions, cookability checks, and your shopping plan.
 
 **Tips:**
 - Use the unit dropdown to pick the most natural measurement (e.g. *whole* for tomatoes, *grams* for meat, *clove* for garlic)
+- Tag each ingredient's location (Fridge, Freezer, Pantry) — the Home page uses this to remind you when to thaw things
 - Storage tips are shown for each ingredient so you know where to keep things and how long they last
 - Marking a recipe as cooked automatically deducts the ingredients from your pantry
 - The Home dashboard will flag any ingredients that aren't in any of your saved recipes — those are your most at-risk items for waste
+""")
+st.page_link("pages/3_Pantry.py", label="Go to Pantry →")
 
----
+st.markdown("---")
 
+# Step 2
+st.markdown("""
 ### 📖 2. Add Your Recipes
-Go to the **Recipes** page. You can save recipes in two ways:
+
+You can save recipes in two ways:
 
 **📷 Photo or PDF upload**
 Take a photo of a recipe card, or upload a PDF. The AI reads the name, ingredients, cooking time, and instructions automatically.
@@ -47,38 +55,64 @@ Take a photo of a recipe card, or upload a PDF. The AI reads the name, ingredien
 **✏️ Manual entry**
 Type the recipe details directly. Add ingredients one per line in the format: `Name, Amount, Unit`
 (e.g. `Chicken Breast, 500, grams`)
+""")
+st.page_link("pages/4_Recipes.py", label="Go to Recipes →")
 
----
+st.markdown("---")
 
+# Step 3
+st.markdown("""
 ### 💡 3. Get Recipe Suggestions
-Go to the **Suggestions** page and click the button. The AI looks at your current fridge contents and tells you:
+
+Click the button to see what you can cook. The AI looks at your current fridge contents and tells you:
 - Which of your saved recipes you can make right now
 - New recipe ideas based on what you have, even if they're not saved yet
-
----
-
-### 📅 4. Plan Your Meals
-Go to the **Meal Planner** page, choose how many days to plan (3, 5, or 7), and generate a schedule. The AI builds a day-by-day plan using your saved recipes and fills any gaps with simple suggestions.
-
----
-
-### 🛒 5. Build a Shopping List
-Go to the **Shopping List** page and pick a recipe. The AI compares what that recipe needs against what's in your fridge and tells you exactly what to buy — and how much.
-
----
-
-### ✅ 6. Log What You Cook
-On the **Recipes** page, hit the **✅ Cooked** button after making a meal. Over time this builds your cooking history, which powers the *Most Cooked Recipes* and *Most Used Ingredients* stats on the Home dashboard.
-
----
-
-### 🏠 7. Check Your Dashboard
-The **Home** page gives you an at-a-glance overview:
-- How many ingredients you have and recipes you've saved
-- Which recipes you can make right now with your current fridge
-- Ingredients that aren't in any recipe (potential waste)
-- AI-generated insights with actionable suggestions for the day
 """)
+st.page_link("pages/5_Suggestions.py", label="Go to Suggestions →")
+
+st.markdown("---")
+
+# Step 4
+st.markdown("""
+### 📅 4. Plan Your Meals
+
+Plan breakfast, lunch, and dinner for each day of the week. Changes are saved automatically. You can also use AI to fill in any unplanned days.
+""")
+st.page_link("pages/6_Meal_Planner.py", label="Go to Meal Planner →")
+
+st.markdown("---")
+
+# Step 5
+st.markdown("""
+### 🛒 5. Build a Shopping List
+
+Pick a recipe and the AI compares what it needs against what's in your pantry — telling you exactly what to buy and how much.
+""")
+st.page_link("pages/7_Shopping_List.py", label="Go to Shopping List →")
+
+st.markdown("---")
+
+# Step 6
+st.markdown("""
+### ✅ 6. Log What You Cook
+
+Hit the **✅ Cooked** button after making a meal. Over time this builds your cooking history, which powers the *Most Cooked Recipes* and *Most Used Ingredients* stats on the Home dashboard.
+""")
+st.page_link("pages/4_Recipes.py", label="Go to Recipes →")
+
+st.markdown("---")
+
+# Step 7
+st.markdown("""
+### 🏠 7. Check Your Dashboard
+
+Open the app each morning to see your daily briefing:
+- Today's planned breakfast, lunch, and dinner
+- Thaw reminders if any frozen ingredients are needed in the next day or two
+- Shopping deadline and what you'll run short on
+- A 7-day week view so you can spot gaps and plan ahead
+""")
+st.page_link("pages/2_Home.py", label="Go to Home →")
 
 st.divider()
 
@@ -89,5 +123,5 @@ The Suggestions, Meal Planner, Shopping List, Home insights, and recipe photo ex
 
 - AI responses may vary slightly between sessions — this is normal
 - The quality of suggestions improves as you add more ingredients and recipes
-- Home insights are generated once when you first visit the page each session. Use the **Refresh Insights** button if your fridge contents have changed
+- Home insights are generated once when you first visit the page each session. Use the **Refresh Insight** button if your fridge contents have changed
 """)
