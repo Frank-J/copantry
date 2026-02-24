@@ -1,8 +1,10 @@
 import streamlit as st
 from datetime import date, timedelta
-from database import get_recipes, get_shopping_plan
+from database import initialize_db, get_recipes, get_shopping_plan, get_meal_entries, save_meal_entry
 from gemini_client import suggest_calendar_meals
 from utils import apply_sidebar_style
+
+initialize_db()
 
 st.set_page_config(page_title="Meal Planner", page_icon="📅", layout="wide")
 apply_sidebar_style()
@@ -54,58 +56,80 @@ else:
     EATING_OUT = "🍽️ Eating Out"
     VACATION = "🏖️ Vacation / Skip"
     SPECIAL = [UNPLANNED, EATING_OUT, VACATION]
+    MEAL_TYPES = ["Breakfast", "Lunch", "Dinner"]
 
     recipe_names = [r["name"] for r in recipes]
     all_options = SPECIAL + recipe_names
 
+    # Load from DB on page open (only fill keys not already in session state)
+    db_entries = get_meal_entries(week_dates[0].isoformat(), week_dates[-1].isoformat())
+    for d in week_dates:
+        day_meals = db_entries.get(d.isoformat(), {})
+        for meal_type in MEAL_TYPES:
+            sk = f"meal_{d.isoformat()}_{meal_type}"
+            if sk not in st.session_state:
+                st.session_state[sk] = day_meals.get(meal_type, UNPLANNED)
+
+    def _save_meal(date_key, meal_type):
+        val = st.session_state.get(f"meal_{date_key}_{meal_type}", UNPLANNED)
+        save_meal_entry(date_key, meal_type, val)
+
     day_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-    def render_day(col, day_date, day_label):
+    # Table header row
+    h_day, h_breakfast, h_lunch, h_dinner = st.columns([1.5, 2.5, 2.5, 2.5])
+    with h_day:
+        st.markdown("**Day**")
+    with h_breakfast:
+        st.markdown("**🌅 Breakfast**")
+    with h_lunch:
+        st.markdown("**☀️ Lunch**")
+    with h_dinner:
+        st.markdown("**🌙 Dinner**")
+
+    for day_date, day_label in zip(week_dates, day_labels):
         date_key = day_date.isoformat()
-        sk = f"meal_{date_key}"
         is_today = day_date == today
-        with col:
+
+        col_day, col_breakfast, col_lunch, col_dinner = st.columns([1.5, 2.5, 2.5, 2.5])
+
+        with col_day:
+            label = f"**{day_label} {day_date.strftime('%b %d')}**" if is_today else f"{day_label} {day_date.strftime('%b %d')}"
             if is_today:
-                st.markdown(f"**{day_label} · {day_date.strftime('%b %d')}** 🔵")
+                st.markdown(f"{label} 🔵")
             else:
-                st.markdown(f"**{day_label} · {day_date.strftime('%b %d')}**")
-            if sk not in st.session_state:
-                st.session_state[sk] = UNPLANNED
-            current = st.session_state[sk]
-            if current not in all_options:
-                current = UNPLANNED
-            st.selectbox(
-                "Meal",
-                all_options,
-                index=all_options.index(current),
-                key=sk,
-                label_visibility="collapsed",
-            )
+                st.markdown(label)
 
-    # Row 1: Mon–Thu
-    row1 = st.columns(4)
-    for col, day_date, day_label in zip(row1, week_dates[:4], day_labels[:4]):
-        render_day(col, day_date, day_label)
-
-    st.write("")
-
-    # Row 2: Fri–Sun (3 days, padded with an empty column to keep consistent width)
-    row2 = st.columns(4)
-    for col, day_date, day_label in zip(row2, week_dates[4:], day_labels[4:]):
-        render_day(col, day_date, day_label)
+        for col, meal_type in zip([col_breakfast, col_lunch, col_dinner], MEAL_TYPES):
+            with col:
+                sk = f"meal_{date_key}_{meal_type}"
+                current = st.session_state.get(sk, UNPLANNED)
+                if current not in all_options:
+                    current = UNPLANNED
+                    st.session_state[sk] = current
+                st.selectbox(
+                    f"{meal_type} for {date_key}",
+                    all_options,
+                    index=all_options.index(current),
+                    key=sk,
+                    label_visibility="collapsed",
+                    on_change=_save_meal,
+                    args=(date_key, meal_type),
+                )
 
     st.divider()
 
     # Week summary
-    week_values = {
-        d.isoformat(): st.session_state.get(f"meal_{d.isoformat()}", UNPLANNED)
+    all_week_values = {
+        (d.isoformat(), mt): st.session_state.get(f"meal_{d.isoformat()}_{mt}", UNPLANNED)
         for d in week_dates
+        for mt in MEAL_TYPES
     }
 
-    home_count = sum(1 for v in week_values.values() if v not in SPECIAL)
-    eating_out_count = sum(1 for v in week_values.values() if v == EATING_OUT)
-    vacation_count = sum(1 for v in week_values.values() if v == VACATION)
-    unplanned_count = sum(1 for v in week_values.values() if v == UNPLANNED)
+    home_count = sum(1 for v in all_week_values.values() if v not in SPECIAL)
+    eating_out_count = sum(1 for v in all_week_values.values() if v == EATING_OUT)
+    vacation_count = sum(1 for v in all_week_values.values() if v == VACATION)
+    unplanned_count = sum(1 for v in all_week_values.values() if v == UNPLANNED)
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Home Meals", home_count)
@@ -115,34 +139,61 @@ else:
 
     st.divider()
 
+    # Build flat meal plan {date_str: recipe_name} for functions that expect it
+    # Use dinner as primary for AI suggestions (backward compat), but pass all meals for shopping
+    home_meals_flat = {}
+    for (date_str, mt), val in all_week_values.items():
+        if val not in SPECIAL:
+            # Use date+mealtype combo key for shopping plan
+            home_meals_flat[f"{date_str}_{mt}"] = val
+
+    # For AI suggestions we still use a per-day map (dinner preferred, else first home meal found)
+    day_primary_map = {}
+    for d in week_dates:
+        date_str = d.isoformat()
+        for mt in MEAL_TYPES:
+            val = st.session_state.get(f"meal_{date_str}_{mt}", UNPLANNED)
+            if val not in SPECIAL:
+                day_primary_map[date_str] = val
+                break
+
     # Action buttons
     col_ai, col_shop = st.columns(2)
 
     with col_ai:
         if st.button("✨ Fill Unplanned Days with AI", use_container_width=True):
-            unplanned_dates = [
-                d.isoformat() for d in week_dates if week_values[d.isoformat()] == UNPLANNED
-            ]
+            # Find days where ALL meal slots are unplanned
+            unplanned_dates = []
+            for d in week_dates:
+                date_str = d.isoformat()
+                all_unplanned = all(
+                    st.session_state.get(f"meal_{date_str}_{mt}", UNPLANNED) == UNPLANNED
+                    for mt in MEAL_TYPES
+                )
+                if all_unplanned:
+                    unplanned_dates.append(date_str)
+
             if not unplanned_dates:
-                st.info("No unplanned days — all days already have a meal or status assigned.")
+                st.info("No fully unplanned days — all days have at least one meal or status assigned.")
             else:
                 with st.spinner("Suggesting meals for unplanned days..."):
                     try:
-                        suggestions = suggest_calendar_meals(recipes, unplanned_dates, week_values)
+                        suggestions = suggest_calendar_meals(recipes, unplanned_dates, day_primary_map)
                         for date_str, recipe_name in suggestions.items():
                             if recipe_name in recipe_names:
-                                st.session_state[f"meal_{date_str}"] = recipe_name
+                                sk = f"meal_{date_str}_Dinner"
+                                st.session_state[sk] = recipe_name
+                                save_meal_entry(date_str, "Dinner", recipe_name)
                         st.rerun()
                     except Exception as e:
                         st.error(f"Could not suggest meals: {e}")
 
     with col_shop:
         if st.button("🛒 Shopping Plan", use_container_width=True, type="primary"):
-            home_meals = {d: v for d, v in week_values.items() if v not in SPECIAL}
-            if not home_meals:
+            if not home_meals_flat:
                 st.warning("No home meals planned yet — add some recipes to the calendar first.")
             else:
-                plan = get_shopping_plan(home_meals, recipes)
+                plan = get_shopping_plan(home_meals_flat, recipes)
                 st.session_state["shopping_plan"] = plan
 
     if "shopping_plan" in st.session_state:

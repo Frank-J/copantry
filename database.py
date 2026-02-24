@@ -78,6 +78,17 @@ def initialize_db():
         )
     """)
 
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS meal_plan (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            plan_date TEXT NOT NULL,
+            meal_type TEXT NOT NULL,
+            meal TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(plan_date, meal_type)
+        )
+    """)
+
     # Seed sample data only if tables are empty
     now = datetime.now()
     ago = lambda days: (now - timedelta(days=days)).isoformat()
@@ -86,21 +97,21 @@ def initialize_db():
     if c.fetchone()[0] == 0:
         sample_ingredients = [
             # Used in recipes
-            ("Eggs", 6, "whole", ago(1)),
-            ("Milk", 2, "cups", ago(1)),
-            ("Butter", 200, "grams", ago(3)),
-            ("Pasta", 500, "grams", ago(3)),
-            ("Tomatoes", 4, "whole", ago(2)),
-            ("Garlic", 5, "cloves", ago(5)),
-            ("Olive Oil", 1, "cups", ago(7)),
-            ("Chicken Breast", 500, "grams", ago(2)),
-            ("Onion", 2, "whole", ago(4)),
-            # Forgotten — in fridge but not in any recipe
-            ("Cornstarch", 1, "tablespoons", ago(14)),
-            ("Lettuce", 1, "head", ago(5)),
+            ("Eggs", 6, "whole", ago(1), "Fridge"),
+            ("Milk", 2, "cups", ago(1), "Fridge"),
+            ("Butter", 200, "grams", ago(3), "Fridge"),
+            ("Pasta", 500, "grams", ago(3), "Pantry"),
+            ("Tomatoes", 4, "whole", ago(2), "Pantry"),
+            ("Garlic", 5, "cloves", ago(5), "Pantry"),
+            ("Olive Oil", 1, "cups", ago(7), "Pantry"),
+            ("Chicken Breast", 500, "grams", ago(2), "Freezer"),
+            ("Onion", 2, "whole", ago(4), "Pantry"),
+            # Forgotten — in pantry but not in any recipe
+            ("Cornstarch", 1, "tablespoons", ago(14), "Pantry"),
+            ("Lettuce", 1, "head", ago(5), "Fridge"),
         ]
         c.executemany(
-            "INSERT INTO ingredients (name, amount, unit, added_date) VALUES (?, ?, ?, ?)",
+            "INSERT INTO ingredients (name, amount, unit, added_date, location) VALUES (?, ?, ?, ?, ?)",
             sample_ingredients,
         )
 
@@ -197,10 +208,36 @@ def initialize_db():
             usage_entries,
         )
 
+    # Seed meal plan if empty
+    c.execute("SELECT COUNT(*) FROM meal_plan")
+    if c.fetchone()[0] == 0:
+        today = date.today()
+        fwd = lambda d: (today + timedelta(days=d)).isoformat()
+        sample_plan = [
+            (fwd(0), "Breakfast", "Scrambled Eggs"),
+            (fwd(0), "Dinner",    "Tomato Pasta"),
+            (fwd(1), "Lunch",     "Spaghetti Aglio e Olio"),
+            (fwd(1), "Dinner",    "🍽️ Eating Out"),
+            (fwd(2), "Breakfast", "Scrambled Eggs"),
+            (fwd(2), "Dinner",    "Garlic Butter Chicken"),
+            (fwd(4), "Dinner",    "Lemon Herb Salmon"),
+        ]
+        c.executemany(
+            "INSERT OR IGNORE INTO meal_plan (plan_date, meal_type, meal, updated_at) VALUES (?, ?, ?, ?)",
+            [(d, t, m, datetime.now().isoformat()) for d, t, m in sample_plan],
+        )
+
     # Migrate: add updated_date column if it doesn't exist yet
     try:
         c.execute("ALTER TABLE ingredients ADD COLUMN updated_date TEXT")
         c.execute("UPDATE ingredients SET updated_date = added_date WHERE updated_date IS NULL")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
+    # Migrate: add location column if it doesn't exist yet
+    try:
+        c.execute("ALTER TABLE ingredients ADD COLUMN location TEXT DEFAULT 'Fridge'")
+        c.execute("UPDATE ingredients SET location = 'Fridge' WHERE location IS NULL")
     except sqlite3.OperationalError:
         pass  # column already exists
 
@@ -210,13 +247,13 @@ def initialize_db():
 
 # Ingredient operations
 
-def add_ingredient(name, amount, unit):
+def add_ingredient(name, amount, unit, location="Fridge"):
     conn = get_connection()
     c = conn.cursor()
     now = datetime.now().isoformat()
     c.execute(
-        "INSERT INTO ingredients (name, amount, unit, added_date, updated_date) VALUES (?, ?, ?, ?, ?)",
-        (name, amount, unit, now, now),
+        "INSERT INTO ingredients (name, amount, unit, added_date, updated_date, location) VALUES (?, ?, ?, ?, ?, ?)",
+        (name, amount, unit, now, now, location),
     )
     conn.commit()
     conn.close()
@@ -225,11 +262,19 @@ def add_ingredient(name, amount, unit):
 def get_ingredients():
     conn = get_connection()
     c = conn.cursor()
-    c.execute("SELECT id, name, amount, unit, added_date, updated_date FROM ingredients ORDER BY name")
+    c.execute("SELECT id, name, amount, unit, added_date, updated_date, location FROM ingredients ORDER BY name")
     rows = c.fetchall()
     conn.close()
     return [
-        {"id": r[0], "name": r[1], "amount": r[2], "unit": r[3], "added_date": r[4], "updated_date": r[5]}
+        {
+            "id": r[0],
+            "name": r[1],
+            "amount": r[2],
+            "unit": r[3],
+            "added_date": r[4],
+            "updated_date": r[5],
+            "location": r[6] if r[6] else "Fridge",
+        }
         for r in rows
     ]
 
@@ -242,7 +287,19 @@ def delete_ingredient(ingredient_id):
     conn.close()
 
 
+def update_ingredient(ingredient_id, amount, location):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute(
+        "UPDATE ingredients SET amount = ?, location = ?, updated_date = ? WHERE id = ?",
+        (amount, location, datetime.now().isoformat(), ingredient_id),
+    )
+    conn.commit()
+    conn.close()
+
+
 def update_ingredient_amount(ingredient_id, amount):
+    """Legacy wrapper — preserves existing location."""
     conn = get_connection()
     c = conn.cursor()
     c.execute(
@@ -420,7 +477,8 @@ def get_shopping_plan(meal_plan, recipes):
     """
     Project ingredient depletion across a meal plan and return a shopping plan.
 
-    meal_plan: {date_str: recipe_name} — only home meals (no special values)
+    meal_plan: {key: recipe_name} where key is either a plain date_str ("2026-02-24")
+               or a date+meal composite ("2026-02-24_Dinner"). Only home meals (no special values).
     recipes:   full recipe list from get_recipes()
 
     Returns:
@@ -441,6 +499,10 @@ def get_shopping_plan(meal_plan, recipes):
     fridge = get_ingredients()
     recipe_map = {r["name"]: r for r in recipes}
 
+    def _extract_date(key):
+        """Extract ISO date portion from a key that may be 'YYYY-MM-DD' or 'YYYY-MM-DD_MealType'."""
+        return key[:10]
+
     # Build running inventory keyed by lowercase name, storing base amounts
     inventory = {}
     for item in fridge:
@@ -455,15 +517,16 @@ def get_shopping_plan(meal_plan, recipes):
 
     shortages = []
 
-    for day_str in sorted(meal_plan.keys()):
-        recipe = recipe_map.get(meal_plan[day_str])
+    for key in sorted(meal_plan.keys()):
+        day_str = _extract_date(key)
+        recipe = recipe_map.get(meal_plan[key])
         if not recipe:
             continue
         for ing in recipe["ingredients"]:
-            key = ing["name"].lower()
+            ing_key = ing["name"].lower()
             n_base, n_base_unit = _to_base(ing["amount"], ing["unit"])
 
-            if key not in inventory:
+            if ing_key not in inventory:
                 shortages.append({
                     "name": ing["name"],
                     "need_amount": ing["amount"],
@@ -475,7 +538,7 @@ def get_shopping_plan(meal_plan, recipes):
                 })
                 continue
 
-            item = inventory[key]
+            item = inventory[ing_key]
             if item["base_unit"] != n_base_unit:
                 continue  # incomparable — skip
 
@@ -513,3 +576,59 @@ def get_forgotten_ingredients():
             recipe_ingredient_names.add(ing["name"].lower())
 
     return [ing for ing in fridge if ing["name"].lower() not in recipe_ingredient_names]
+
+
+# Meal plan operations
+
+def save_meal_entry(date_str, meal_type, meal):
+    """Upsert one meal slot."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute(
+        """
+        INSERT INTO meal_plan (plan_date, meal_type, meal, updated_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(plan_date, meal_type) DO UPDATE SET meal = excluded.meal, updated_at = excluded.updated_at
+        """,
+        (date_str, meal_type, meal, datetime.now().isoformat()),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_meal_entries(start_date_str, end_date_str):
+    """Return {date_str: {"Breakfast": meal, "Lunch": meal, "Dinner": meal}} for date range."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute(
+        "SELECT plan_date, meal_type, meal FROM meal_plan WHERE plan_date BETWEEN ? AND ? ORDER BY plan_date, meal_type",
+        (start_date_str, end_date_str),
+    )
+    rows = c.fetchall()
+    conn.close()
+
+    result = {}
+    for plan_date, meal_type, meal in rows:
+        if plan_date not in result:
+            result[plan_date] = {}
+        result[plan_date][meal_type] = meal
+    return result
+
+
+def get_meals_for_date(date_str):
+    """Return {"Breakfast": meal, "Lunch": meal, "Dinner": meal} for one date. Missing types -> UNPLANNED."""
+    UNPLANNED = "— Unplanned —"
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute(
+        "SELECT meal_type, meal FROM meal_plan WHERE plan_date = ?",
+        (date_str,),
+    )
+    rows = c.fetchall()
+    conn.close()
+
+    result = {"Breakfast": UNPLANNED, "Lunch": UNPLANNED, "Dinner": UNPLANNED}
+    for meal_type, meal in rows:
+        if meal_type in result:
+            result[meal_type] = meal
+    return result
