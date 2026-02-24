@@ -29,11 +29,11 @@ What I needed was something that could act as both an **inventory system** and a
 
 Fridge & Recipe Manager is that web app. It gives you:
 
-- **Ingredient tracking** — log what's in your fridge with amounts and units
-- **Recipe storage** — save recipes manually or by uploading a photo, with AI extracting the details automatically
+- **Pantry tracking** — log everything you have at home with amounts and units, across the fridge, freezer, and dry goods
+- **Recipe storage** — save recipes manually or by uploading a photo or PDF, with AI extracting the details automatically
 - **AI-powered suggestions** — find out what you can cook with what you already have
-- **Meal planning** — generate a weekly schedule from your saved recipes
-- **Shopping lists** — see exactly what you're missing before heading to the store
+- **Calendar meal planning** — plan your week day by day, with eating out and vacation options built in
+- **Smart shopping plan** — projects when you'll run out of each ingredient and tells you the specific day to shop and exactly what to buy
 
 The goal is to make home cooking feel as frictionless as a meal kit service, without the price tag.
 
@@ -65,8 +65,11 @@ When extracting a recipe from a photo or PDF, the AI sometimes can't confidently
 **Multi-page recipe support**
 Most recipe apps assume a recipe fits on one image. HelloFresh cards and many cookbooks put ingredients on the front and steps on the back. Recognising this as a real gap, I added support for uploading two images together (front and back) as well as PDFs, with the AI combining content across pages into a single recipe. A note in the UI explains to upload one recipe at a time to avoid mixing content across recipes.
 
+**Pantry over fridge**
+Calling the inventory section "Fridge" was a quick early decision that turned out to be wrong — not everything people track is refrigerated. Garlic, pasta, canned goods, and spices live in the pantry or cupboard. Renaming it to "Pantry" is a small change on the surface but reflects a more accurate mental model of what the app is actually managing: your full home ingredient inventory, not just what's cold.
+
 **Local tool and shareable demo from the same codebase**
-The app serves two purposes: a personal fridge management tool I actually use, and a shareable portfolio demo. Rather than building two versions, the same codebase runs locally with a persistent SQLite database and on Streamlit Cloud with pre-seeded sample data — so reviewers can explore it immediately without any setup.
+The app serves two purposes: a personal pantry management tool I actually use, and a shareable portfolio demo. Rather than building two versions, the same codebase runs locally with a persistent SQLite database and on Streamlit Cloud with pre-seeded sample data — so reviewers can explore it immediately without any setup.
 
 **Cached AI insights**
 The Home dashboard generates an AI insight on first load. Rather than regenerating it on every page interaction (Streamlit reruns the entire script on any click), the insight is cached in session state and refreshed only when explicitly requested. This keeps the experience fast and avoids unnecessary API calls.
@@ -88,14 +91,15 @@ with st.expander("📋 Changelog"):
     st.markdown("""
 | Version | Changes |
 |---|---|
-| v8 | Quantity-aware ingredient system: unit conversion (grams ↔ oz, cups ↔ ml, etc.), automatic fridge deduction when a recipe is marked as cooked, meal plan shopping projection with a specific shop-by date |
+| v9 | Renamed Fridge to Pantry to better reflect full ingredient inventory; AI-generated per-ingredient storage tips; date added and last updated tracking; column headers on ingredient table |
+| v8 | Quantity-aware ingredient system: unit conversion (grams ↔ oz, cups ↔ ml, etc.), automatic pantry deduction when a recipe is marked as cooked, meal plan shopping projection with a specific shop-by date |
 | v7 | Calendar meal planner: 7-day forward view starting from today, per-day selectors with eating out and vacation options, AI fill for unplanned days |
 | v6 | Getting Started guide, Feedback page, About page with full product narrative |
 | v5 | Recipe editing and ingredient amount editing |
 | v4 | Home dashboard with KPI metrics, AI daily insights, cooking history, and forgotten ingredient tracking |
 | v3 | Natural unit system (whole, clove, head, etc.) replacing generic defaults; unknown fields flagged for user input rather than silently guessed |
 | v2 | Photo and PDF recipe extraction via AI; multi-page recipe card support (front and back) |
-| v1 | Core scaffolding: fridge tracking, recipe storage, AI suggestions, basic meal planner, shopping list |
+| v1 | Core scaffolding: ingredient tracking, recipe storage, AI suggestions, basic meal planner, shopping list |
 """)
 
 st.caption("Use the sidebar to explore the app.")
