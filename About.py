@@ -71,14 +71,31 @@ The app serves two purposes: a personal fridge management tool I actually use, a
 **Cached AI insights**
 The Home dashboard generates an AI insight on first load. Rather than regenerating it on every page interaction (Streamlit reruns the entire script on any click), the insight is cached in session state and refreshed only when explicitly requested. This keeps the experience fast and avoids unnecessary API calls.
 
+**Quantity-aware ingredient tracking**
+The first version of cookability checking only looked at ingredient names — if "eggs" were in the fridge, the recipe was considered makeable regardless of how many were left. I replaced this with real quantity math: the app now converts between compatible units (grams ↔ oz, cups ↔ ml, etc.) and checks whether you actually have enough. Marking a recipe as cooked automatically deducts the exact amounts used. The meal planner's shopping plan projects this depletion day by day and tells you the specific date you need to shop and exactly what to buy.
+
 ## What I'd Build Next
 
-1. **Expiry date tracking** — alert when ingredients are approaching their use-by date to further reduce waste
-2. **Nutritional information** — surface calorie and macro data alongside recipes
-3. **Grocery delivery integration** — connect the shopping list directly to Instacart or Amazon Fresh for one-click ordering
-4. **Native mobile app** — the biggest friction point right now is updating the fridge on the go: you've just bought groceries, you're standing in the kitchen, and opening a web app on a laptop is an extra step. A mobile-first version with a quick-add flow and receipt scanning would make the experience seamless in everyday use
-5. **Ingredient quantity awareness** — the current cookability check matches ingredient names but not amounts. If a recipe needs 3 eggs and I only have 1, the app still marks it as cookable. A smarter check would compare quantities, flag shortfalls, and surface them as partial matches rather than a false green light
+1. **Native mobile app** — the biggest friction point right now is updating the fridge on the go: you've just bought groceries, you're standing in the kitchen, and opening a web app on a laptop is an extra step. A mobile-first version with a quick-add flow and receipt scanning would make the experience seamless in everyday use
+2. **Expiry date tracking** — alert when ingredients are approaching their use-by date to further reduce waste
+3. **Nutritional information** — surface calorie and macro data alongside recipes
+4. **Grocery delivery integration** — connect the shopping list directly to Instacart or Amazon Fresh for one-click ordering
 """)
 
 st.divider()
+
+with st.expander("📋 Changelog"):
+    st.markdown("""
+| Version | Changes |
+|---|---|
+| v8 | Quantity-aware ingredient system: unit conversion (grams ↔ oz, cups ↔ ml, etc.), automatic fridge deduction when a recipe is marked as cooked, meal plan shopping projection with a specific shop-by date |
+| v7 | Calendar meal planner: 7-day forward view starting from today, per-day selectors with eating out and vacation options, AI fill for unplanned days |
+| v6 | Getting Started guide, Feedback page, About page with full product narrative |
+| v5 | Recipe editing and ingredient amount editing |
+| v4 | Home dashboard with KPI metrics, AI daily insights, cooking history, and forgotten ingredient tracking |
+| v3 | Natural unit system (whole, clove, head, etc.) replacing generic defaults; unknown fields flagged for user input rather than silently guessed |
+| v2 | Photo and PDF recipe extraction via AI; multi-page recipe card support (front and back) |
+| v1 | Core scaffolding: fridge tracking, recipe storage, AI suggestions, basic meal planner, shopping list |
+""")
+
 st.caption("Use the sidebar to explore the app.")
