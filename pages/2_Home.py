@@ -217,21 +217,7 @@ with st.expander("📊 Cooking Stats"):
             for item in most_used:
                 st.write(f"**{item['name']}** — used {item['count']} time(s)")
 
-    # Recipes cookable now
-    st.subheader("✅ Recipes You Can Make Right Now")
-    cookable = get_cookable_recipes()
-    if not cookable:
-        if not ingredients:
-            st.info("Add ingredients to your fridge to see what you can cook.")
-            st.page_link("pages/3_Pantry.py", label="Go to Pantry →")
-        elif not recipes:
-            st.info("Add some recipes to see which ones you can make with your current ingredients.")
-            st.page_link("pages/4_Recipes.py", label="Add a Recipe →")
-        else:
-            st.info("None of your saved recipes are fully covered by your current pantry ingredients.")
-    else:
-        for recipe in cookable:
-            st.write(f"- **{recipe['name']}** ({recipe['cooking_time']})")
+    st.page_link("pages/5_Suggestions.py", label="See what you can cook now →")
 
 # ---------------------------------------------------------------------------
 # AI Insight (singular, below main sections)

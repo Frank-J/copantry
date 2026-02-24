@@ -89,6 +89,15 @@ def initialize_db():
         )
     """)
 
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS shopping_list_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            checked INTEGER NOT NULL DEFAULT 0,
+            added_at TEXT NOT NULL
+        )
+    """)
+
     # Seed sample data only if tables are empty
     now = datetime.now()
     ago = lambda days: (now - timedelta(days=days)).isoformat()
@@ -632,3 +641,79 @@ def get_meals_for_date(date_str):
         if meal_type in result:
             result[meal_type] = meal
     return result
+
+
+def get_recipe_pantry_status(recipe):
+    """
+    Compare a recipe's ingredients against the current pantry.
+    Returns a list of dicts:
+      {"name", "amount", "unit", "status": "ok" | "short" | "missing",
+       "have_amount", "have_unit"}
+    """
+    pantry = get_ingredients()
+    pantry_map = {i["name"].lower(): i for i in pantry}
+
+    result = []
+    for ing in recipe["ingredients"]:
+        key = ing["name"].lower()
+        item = pantry_map.get(key)
+        if not item:
+            result.append({
+                "name": ing["name"], "amount": ing["amount"], "unit": ing["unit"],
+                "status": "missing", "have_amount": 0, "have_unit": ing["unit"],
+            })
+            continue
+        enough = _has_enough(item["amount"], item["unit"], ing["amount"], ing["unit"])
+        result.append({
+            "name": ing["name"], "amount": ing["amount"], "unit": ing["unit"],
+            "status": "ok" if enough is True or enough is None else "short",
+            "have_amount": item["amount"], "have_unit": item["unit"],
+        })
+    return result
+
+
+# Shopping list operations
+
+def get_shopping_list_items():
+    """Return all manual shopping list items ordered by added_at."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT id, name, checked FROM shopping_list_items ORDER BY added_at")
+    rows = c.fetchall()
+    conn.close()
+    return [{"id": r[0], "name": r[1], "checked": bool(r[2])} for r in rows]
+
+
+def add_shopping_list_item(name):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO shopping_list_items (name, checked, added_at) VALUES (?, 0, ?)",
+        (name, datetime.now().isoformat()),
+    )
+    conn.commit()
+    conn.close()
+
+
+def toggle_shopping_list_item(item_id, checked):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("UPDATE shopping_list_items SET checked = ? WHERE id = ?", (int(checked), item_id))
+    conn.commit()
+    conn.close()
+
+
+def delete_shopping_list_item(item_id):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM shopping_list_items WHERE id = ?", (item_id,))
+    conn.commit()
+    conn.close()
+
+
+def clear_checked_shopping_items():
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM shopping_list_items WHERE checked = 1")
+    conn.commit()
+    conn.close()

@@ -1,6 +1,6 @@
 import streamlit as st
 from utils import apply_sidebar_style
-from database import get_recipes, add_recipe, update_recipe, delete_recipe, log_recipe_cooked, deduct_recipe_ingredients
+from database import get_recipes, add_recipe, update_recipe, delete_recipe, log_recipe_cooked, deduct_recipe_ingredients, get_recipe_pantry_status
 from gemini_client import extract_recipe_from_images, extract_recipe_from_pdf
 from constants import UNITS
 
@@ -193,6 +193,19 @@ else:
                     if st.session_state.get("editing_recipe_id") == recipe["id"]:
                         del st.session_state["editing_recipe_id"]
                     st.rerun()
+
+            # Pantry status for this recipe
+            pantry_status = get_recipe_pantry_status(recipe)
+            missing = [s for s in pantry_status if s["status"] == "missing"]
+            short = [s for s in pantry_status if s["status"] == "short"]
+            if missing or short:
+                st.markdown("**🛒 What you need to buy:**")
+                for s in missing:
+                    st.write(f"- ❌ **{s['name']}** — need {s['amount']} {s['unit']} (not in pantry)")
+                for s in short:
+                    st.write(f"- ⚠️ **{s['name']}** — need {s['amount']} {s['unit']}, have {s['have_amount']} {s['have_unit']}")
+            else:
+                st.success("✅ You have everything for this recipe")
 
     # Inline edit form — appears below the list when a recipe is being edited
     editing_id = st.session_state.get("editing_recipe_id")

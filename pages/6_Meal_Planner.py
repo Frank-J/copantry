@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import date, timedelta
-from database import initialize_db, get_recipes, get_shopping_plan, get_meal_entries, save_meal_entry
+from database import initialize_db, get_recipes, get_meal_entries, save_meal_entry
 from gemini_client import suggest_calendar_meals
 from utils import apply_sidebar_style
 
@@ -139,15 +139,7 @@ else:
 
     st.divider()
 
-    # Build flat meal plan {date_str: recipe_name} for functions that expect it
-    # Use dinner as primary for AI suggestions (backward compat), but pass all meals for shopping
-    home_meals_flat = {}
-    for (date_str, mt), val in all_week_values.items():
-        if val not in SPECIAL:
-            # Use date+mealtype combo key for shopping plan
-            home_meals_flat[f"{date_str}_{mt}"] = val
-
-    # For AI suggestions we still use a per-day map (dinner preferred, else first home meal found)
+    # For AI suggestions use a per-day map (dinner preferred, else first home meal found)
     day_primary_map = {}
     for d in week_dates:
         date_str = d.isoformat()
@@ -189,53 +181,4 @@ else:
                         st.error(f"Could not suggest meals: {e}")
 
     with col_shop:
-        if st.button("🛒 Shopping Plan", use_container_width=True, type="primary"):
-            if not home_meals_flat:
-                st.warning("No home meals planned yet — add some recipes to the calendar first.")
-            else:
-                plan = get_shopping_plan(home_meals_flat, recipes)
-                st.session_state["shopping_plan"] = plan
-
-    if "shopping_plan" in st.session_state:
-        plan = st.session_state["shopping_plan"]
-        st.divider()
-
-        if plan["fully_covered"]:
-            st.success("✅ Your pantry has everything needed for all planned meals.")
-        else:
-            shop_by_date = date.fromisoformat(plan["shop_by"])
-            st.error(f"🛒 **Shop by {shop_by_date.strftime('%A, %b %d')}** — you'll start running short after that.")
-
-            # Build display table
-            rows = []
-            for item in plan["items"]:
-                rows.append({
-                    "Ingredient": item["name"],
-                    "Need": f"{item['need_amount']} {item['need_unit']}",
-                    "Have": f"{item['have_amount']} {item['have_unit']}",
-                    "Runs out": date.fromisoformat(item["runs_out_on"]).strftime("%a %b %d"),
-                    "For recipe": item["recipe"],
-                })
-
-            st.markdown("**What to buy:**")
-            st.table(rows)
-
-            # Plain-text download
-            lines = [
-                f"Shopping Plan — shop by {shop_by_date.strftime('%A, %b %d')}",
-                "",
-            ]
-            for item in plan["items"]:
-                lines.append(
-                    f"- {item['name']}: need {item['need_amount']} {item['need_unit']} "
-                    f"(have {item['have_amount']} {item['have_unit']}) "
-                    f"— runs out {date.fromisoformat(item['runs_out_on']).strftime('%a %b %d')} "
-                    f"for {item['recipe']}"
-                )
-            st.download_button(
-                label="Download Shopping Plan",
-                data="\n".join(lines),
-                file_name="shopping_plan.txt",
-                mime="text/plain",
-                use_container_width=True,
-            )
+        st.page_link("pages/7_Shopping_List.py", label="🛒 View Shopping List →")
