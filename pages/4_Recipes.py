@@ -1,6 +1,6 @@
 import streamlit as st
 from utils import apply_sidebar_style
-from database import get_recipes, add_recipe, update_recipe, delete_recipe, log_recipe_cooked
+from database import get_recipes, add_recipe, update_recipe, delete_recipe, log_recipe_cooked, deduct_recipe_ingredients
 from gemini_client import extract_recipe_from_images, extract_recipe_from_pdf
 from constants import UNITS
 
@@ -183,7 +183,8 @@ else:
             with col2:
                 if st.button("✅ Cooked", key=f"cooked_{recipe['id']}"):
                     log_recipe_cooked(recipe["id"])
-                    st.success("Logged!")
+                    deduct_recipe_ingredients(recipe["id"])
+                    st.success("Logged! Fridge updated.")
                 if st.button("✏️ Edit", key=f"edit_recipe_{recipe['id']}"):
                     st.session_state["editing_recipe_id"] = recipe["id"]
                     st.rerun()

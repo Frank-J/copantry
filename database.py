@@ -1,8 +1,43 @@
 import sqlite3
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 DB_PATH = "recipes.db"
+
+# ---------------------------------------------------------------------------
+# Unit conversion helpers
+# ---------------------------------------------------------------------------
+
+UNIT_TO_GRAMS = {"grams": 1, "kg": 1000, "oz": 28.3495, "lbs": 453.592}
+UNIT_TO_ML = {"ml": 1, "liters": 1000, "cups": 240, "tablespoons": 14.787, "teaspoons": 4.929}
+
+
+def _to_base(amount, unit):
+    """Convert amount to a base unit (grams or ml). Returns (base_amount, base_unit).
+    Countable/packaged units are returned unchanged."""
+    if unit in UNIT_TO_GRAMS:
+        return amount * UNIT_TO_GRAMS[unit], "grams"
+    if unit in UNIT_TO_ML:
+        return amount * UNIT_TO_ML[unit], "ml"
+    return amount, unit
+
+
+def _from_base(base_amount, target_unit):
+    """Convert a base-unit amount back to the target unit."""
+    if target_unit in UNIT_TO_GRAMS:
+        return base_amount / UNIT_TO_GRAMS[target_unit]
+    if target_unit in UNIT_TO_ML:
+        return base_amount / UNIT_TO_ML[target_unit]
+    return base_amount
+
+
+def _has_enough(fridge_amount, fridge_unit, need_amount, need_unit):
+    """Return True if fridge has enough, False if not, None if units are incomparable."""
+    f_base, f_base_unit = _to_base(fridge_amount, fridge_unit)
+    n_base, n_base_unit = _to_base(need_amount, need_unit)
+    if f_base_unit != n_base_unit:
+        return None  # e.g. grams vs cups — can't compare
+    return f_base >= n_base
 
 
 def get_connection():
@@ -310,17 +345,147 @@ def get_most_used_ingredients(limit=5):
 
 
 def get_cookable_recipes():
-    """Return recipes where all ingredients are present in the fridge."""
+    """Return recipes where all ingredients are present in sufficient quantity."""
     fridge = get_ingredients()
     recipes = get_recipes()
-    fridge_names = {i["name"].lower() for i in fridge}
+    fridge_map = {i["name"].lower(): i for i in fridge}
 
     cookable = []
     for recipe in recipes:
-        recipe_ingredient_names = {i["name"].lower() for i in recipe["ingredients"]}
-        if recipe_ingredient_names.issubset(fridge_names):
+        can_cook = True
+        for ing in recipe["ingredients"]:
+            fridge_item = fridge_map.get(ing["name"].lower())
+            if not fridge_item:
+                can_cook = False
+                break
+            result = _has_enough(fridge_item["amount"], fridge_item["unit"], ing["amount"], ing["unit"])
+            if result is False:  # None means incomparable units — don't block
+                can_cook = False
+                break
+        if can_cook:
             cookable.append(recipe)
     return cookable
+
+
+def deduct_recipe_ingredients(recipe_id):
+    """Subtract recipe ingredient amounts from the fridge after cooking."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT ingredients FROM recipes WHERE id = ?", (recipe_id,))
+    row = c.fetchone()
+    if not row:
+        conn.close()
+        return
+    ingredients = json.loads(row[0])
+    for ing in ingredients:
+        c.execute(
+            "SELECT id, amount, unit FROM ingredients WHERE LOWER(name) = LOWER(?)",
+            (ing["name"],),
+        )
+        fridge_row = c.fetchone()
+        if not fridge_row:
+            continue
+        fridge_id, fridge_amount, fridge_unit = fridge_row
+        f_base, f_base_unit = _to_base(fridge_amount, fridge_unit)
+        n_base, n_base_unit = _to_base(ing["amount"], ing["unit"])
+        if f_base_unit != n_base_unit:
+            continue  # incomparable units — skip
+        remaining = _from_base(max(0, f_base - n_base), fridge_unit)
+        if remaining <= 0:
+            c.execute("DELETE FROM ingredients WHERE id = ?", (fridge_id,))
+        else:
+            c.execute(
+                "UPDATE ingredients SET amount = ? WHERE id = ?",
+                (round(remaining, 3), fridge_id),
+            )
+    conn.commit()
+    conn.close()
+
+
+def get_shopping_plan(meal_plan, recipes):
+    """
+    Project ingredient depletion across a meal plan and return a shopping plan.
+
+    meal_plan: {date_str: recipe_name} — only home meals (no special values)
+    recipes:   full recipe list from get_recipes()
+
+    Returns:
+    {
+        "fully_covered": bool,
+        "shop_by": date_str | None,   # day before first shortage
+        "items": [
+            {
+                "name": str,
+                "need_amount": float, "need_unit": str,   # per recipe serving
+                "have_amount": float, "have_unit": str,   # what was left before shortage
+                "runs_out_on": date_str,
+                "recipe": str,
+            }
+        ]
+    }
+    """
+    fridge = get_ingredients()
+    recipe_map = {r["name"]: r for r in recipes}
+
+    # Build running inventory keyed by lowercase name, storing base amounts
+    inventory = {}
+    for item in fridge:
+        base_amt, base_unit = _to_base(item["amount"], item["unit"])
+        inventory[item["name"].lower()] = {
+            "base_amount": base_amt,
+            "base_unit": base_unit,
+            "original_unit": item["unit"],
+            "display_name": item["name"],
+            "original_amount": item["amount"],
+        }
+
+    shortages = []
+
+    for day_str in sorted(meal_plan.keys()):
+        recipe = recipe_map.get(meal_plan[day_str])
+        if not recipe:
+            continue
+        for ing in recipe["ingredients"]:
+            key = ing["name"].lower()
+            n_base, n_base_unit = _to_base(ing["amount"], ing["unit"])
+
+            if key not in inventory:
+                shortages.append({
+                    "name": ing["name"],
+                    "need_amount": ing["amount"],
+                    "need_unit": ing["unit"],
+                    "have_amount": 0,
+                    "have_unit": ing["unit"],
+                    "runs_out_on": day_str,
+                    "recipe": recipe["name"],
+                })
+                continue
+
+            item = inventory[key]
+            if item["base_unit"] != n_base_unit:
+                continue  # incomparable — skip
+
+            before = item["base_amount"]
+            item["base_amount"] = max(0, item["base_amount"] - n_base)
+
+            if before < n_base:  # had less than needed
+                shortages.append({
+                    "name": item["display_name"],
+                    "need_amount": ing["amount"],
+                    "need_unit": ing["unit"],
+                    "have_amount": round(_from_base(before, item["original_unit"]), 3),
+                    "have_unit": item["original_unit"],
+                    "runs_out_on": day_str,
+                    "recipe": recipe["name"],
+                })
+
+    if not shortages:
+        return {"fully_covered": True, "shop_by": None, "items": []}
+
+    earliest = min(s["runs_out_on"] for s in shortages)
+    shop_by = (date.fromisoformat(earliest) - timedelta(days=1)).isoformat()
+
+    return {"fully_covered": False, "shop_by": shop_by, "items": shortages}
 
 
 def get_forgotten_ingredients():

@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import date, timedelta
-from database import get_recipes, get_ingredients
-from gemini_client import suggest_calendar_meals, generate_weekly_shopping_list
+from database import get_recipes, get_shopping_plan
+from gemini_client import suggest_calendar_meals
 from utils import apply_sidebar_style
 
 st.set_page_config(page_title="Meal Planner", page_icon="📅", layout="wide")
@@ -137,28 +137,54 @@ else:
                         st.error(f"Could not suggest meals: {e}")
 
     with col_shop:
-        if st.button("🛒 Generate Weekly Shopping List", use_container_width=True, type="primary"):
+        if st.button("🛒 Shopping Plan", use_container_width=True, type="primary"):
             home_meals = {d: v for d, v in week_values.items() if v not in SPECIAL}
             if not home_meals:
                 st.warning("No home meals planned yet — add some recipes to the calendar first.")
             else:
-                fridge = get_ingredients()
-                with st.spinner("Building your shopping list..."):
-                    try:
-                        planned_recipes = [r for r in recipes if r["name"] in home_meals.values()]
-                        result = generate_weekly_shopping_list(home_meals, planned_recipes, fridge)
-                        st.session_state["weekly_shopping_list"] = result
-                    except Exception as e:
-                        st.error(f"Could not generate shopping list: {e}")
+                plan = get_shopping_plan(home_meals, recipes)
+                st.session_state["shopping_plan"] = plan
 
-    if "weekly_shopping_list" in st.session_state:
+    if "shopping_plan" in st.session_state:
+        plan = st.session_state["shopping_plan"]
         st.divider()
-        st.subheader("🛒 Weekly Shopping List")
-        st.markdown(st.session_state["weekly_shopping_list"])
-        st.download_button(
-            label="Download Shopping List",
-            data=st.session_state["weekly_shopping_list"],
-            file_name="weekly_shopping_list.txt",
-            mime="text/plain",
-            use_container_width=True,
-        )
+
+        if plan["fully_covered"]:
+            st.success("✅ Your fridge has everything needed for all planned meals.")
+        else:
+            shop_by_date = date.fromisoformat(plan["shop_by"])
+            st.error(f"🛒 **Shop by {shop_by_date.strftime('%A, %b %d')}** — you'll start running short after that.")
+
+            # Build display table
+            rows = []
+            for item in plan["items"]:
+                rows.append({
+                    "Ingredient": item["name"],
+                    "Need": f"{item['need_amount']} {item['need_unit']}",
+                    "Have": f"{item['have_amount']} {item['have_unit']}",
+                    "Runs out": date.fromisoformat(item["runs_out_on"]).strftime("%a %b %d"),
+                    "For recipe": item["recipe"],
+                })
+
+            st.markdown("**What to buy:**")
+            st.table(rows)
+
+            # Plain-text download
+            lines = [
+                f"Shopping Plan — shop by {shop_by_date.strftime('%A, %b %d')}",
+                "",
+            ]
+            for item in plan["items"]:
+                lines.append(
+                    f"- {item['name']}: need {item['need_amount']} {item['need_unit']} "
+                    f"(have {item['have_amount']} {item['have_unit']}) "
+                    f"— runs out {date.fromisoformat(item['runs_out_on']).strftime('%a %b %d')} "
+                    f"for {item['recipe']}"
+                )
+            st.download_button(
+                label="Download Shopping Plan",
+                data="\n".join(lines),
+                file_name="shopping_plan.txt",
+                mime="text/plain",
+                use_container_width=True,
+            )
