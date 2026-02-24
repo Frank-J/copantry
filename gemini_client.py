@@ -268,6 +268,76 @@ def generate_weekly_shopping_list(meal_plan, planned_recipes, fridge_ingredients
     return response.text
 
 
+def reschedule_around_grocery_date(meal_plan, recipes, pantry_ingredients, grocery_date_str):
+    """
+    Rearrange a meal plan so that meals before grocery_date only use current pantry.
+    Meals requiring shopping are pushed to grocery_date or after.
+
+    meal_plan: {date_str: {meal_type: meal_name}}
+    recipes:   full recipe list from get_recipes()
+    pantry_ingredients: list of ingredient dicts from get_ingredients()
+    grocery_date_str: ISO date string of when the user can next shop
+
+    Returns parsed JSON: {"feasible": bool, "note": str, "plan": {date_str: {meal_type: meal_name}}}
+    """
+    client = _get_client()
+
+    plan_lines = []
+    for date_str, meals in sorted(meal_plan.items()):
+        for meal_type, meal_name in meals.items():
+            plan_lines.append(f"- {date_str} {meal_type}: {meal_name}")
+    plan_str = "\n".join(plan_lines) if plan_lines else "No meals planned."
+
+    pantry_str = "\n".join(
+        [f"- {i['name']}: {i['amount']} {i['unit']}" for i in pantry_ingredients]
+    ) if pantry_ingredients else "Pantry is empty."
+
+    recipe_lines = []
+    for r in recipes:
+        ings = ", ".join([f"{i['name']} ({i['amount']} {i['unit']})" for i in r["ingredients"]])
+        recipe_lines.append(f"- {r['name']}: needs {ings}")
+    recipes_str = "\n".join(recipe_lines) if recipe_lines else "No recipes saved."
+
+    prompt = f"""
+I have a meal plan for the next 7 days but I cannot go grocery shopping until {grocery_date_str}.
+
+Current meal plan:
+{plan_str}
+
+My current pantry:
+{pantry_str}
+
+My saved recipes and their ingredients:
+{recipes_str}
+
+Please rearrange my meal plan so that:
+1. All meals scheduled BEFORE {grocery_date_str} only use ingredients I currently have in my pantry
+2. Meals that require ingredients not in my pantry are moved to {grocery_date_str} or later
+3. The week still makes sense — avoid the same recipe on consecutive days where possible
+4. Only use recipe names exactly as listed above, or "— Unplanned —" if a slot can't be filled
+
+If you cannot fill every slot before {grocery_date_str} with pantry-only meals, leave those slots as "— Unplanned —" and set "feasible" to false with a note explaining what's missing.
+
+Return ONLY valid JSON with no extra text or markdown:
+{{
+    "feasible": true,
+    "note": "Brief message to the user about the rescheduled plan, or what's missing if not feasible",
+    "plan": {{
+        "YYYY-MM-DD": {{
+            "Breakfast": "Recipe Name or — Unplanned —",
+            "Lunch": "Recipe Name or — Unplanned —",
+            "Dinner": "Recipe Name or — Unplanned —"
+        }}
+    }}
+}}
+
+Include all 7 days. Use the exact date strings from the current plan.
+"""
+
+    response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+    return _parse_gemini_json(response.text)
+
+
 def generate_shopping_list(recipe, fridge_ingredients):
     """Compare a recipe's ingredients against the fridge and list what to buy."""
     client = _get_client()

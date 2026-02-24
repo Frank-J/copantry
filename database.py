@@ -643,6 +643,21 @@ def get_meals_for_date(date_str):
     return result
 
 
+def get_recipe_cook_counts():
+    """Return {recipe_name: cook_count} for all recipes (including those never cooked)."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("""
+        SELECT r.name, COUNT(ru.id) as cook_count
+        FROM recipes r
+        LEFT JOIN recipe_usage ru ON r.id = ru.recipe_id
+        GROUP BY r.id, r.name
+    """)
+    rows = c.fetchall()
+    conn.close()
+    return {name: count for name, count in rows}
+
+
 def get_recipe_pantry_status(recipe):
     """
     Compare a recipe's ingredients against the current pantry.
