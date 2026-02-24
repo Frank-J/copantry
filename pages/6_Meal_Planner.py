@@ -22,20 +22,20 @@ else:
     if "week_offset" not in st.session_state:
         st.session_state["week_offset"] = 0
 
-    # Calculate current week (Mon–Sun)
+    # Always start from today, show next 7 days per "week"
     today = date.today()
-    week_start = today - timedelta(days=today.weekday()) + timedelta(weeks=st.session_state["week_offset"])
+    week_start = today + timedelta(weeks=st.session_state["week_offset"])
     week_dates = [week_start + timedelta(days=i) for i in range(7)]
 
     # Week label
     offset = st.session_state["week_offset"]
     week_label = f"{week_dates[0].strftime('%b %d')} – {week_dates[6].strftime('%b %d, %Y')}"
     if offset == 0:
-        week_label += " · This Week"
-    elif offset == 1:
-        week_label += " · Next Week"
-    elif offset == -1:
-        week_label += " · Last Week"
+        week_label += " · Next 7 Days"
+    elif offset > 0:
+        week_label += f" · +{offset} Week{'s' if offset > 1 else ''}"
+    else:
+        week_label += f" · {abs(offset)} Week{'s' if abs(offset) > 1 else ''} Ago"
 
     col_prev, col_title, col_next = st.columns([1, 5, 1])
     with col_prev:
