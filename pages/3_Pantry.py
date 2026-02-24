@@ -7,7 +7,7 @@ from gemini_client import get_storage_tips
 
 initialize_db()
 
-st.set_page_config(page_title="Pantry", page_icon="🥫", layout="wide")
+st.set_page_config(page_title="CoPantry · Pantry", page_icon="🥫", layout="wide")
 apply_sidebar_style()
 
 st.title("🥫 My Pantry")

@@ -5,14 +5,14 @@ from utils import apply_sidebar_style
 initialize_db()
 
 st.set_page_config(
-    page_title="Fridge & Recipe Manager",
+    page_title="CoPantry",
     page_icon="🍳",
     layout="wide",
 )
 apply_sidebar_style()
 
-st.title("🍳 Fridge & Recipe Manager")
-st.markdown("*An AI-powered tool for smarter ingredient management and meal planning.*")
+st.title("🍳 CoPantry")
+st.markdown("*Your co-pilot for the cooking loop — shop, store, cook, repeat.*")
 
 st.divider()
 
@@ -27,7 +27,7 @@ What I needed was something that could act as both an **inventory system** and a
 
 ## The Solution
 
-Fridge & Recipe Manager is that web app. It gives you:
+CoPantry is that web app. It automates the cooking loop: shop, store, cook, repeat. It gives you:
 
 - **Pantry tracking** — log everything you have at home with amounts, units, and location (Fridge/Freezer/Pantry/Other), enabling automatic thaw reminders
 - **Recipe storage** — save recipes manually or by uploading a photo or PDF, with AI extracting the details automatically
@@ -56,6 +56,9 @@ No project goes exactly to plan. A few real obstacles I navigated:
 
 Building a working product in a short timeframe means making deliberate trade-offs. Here are a few worth highlighting:
 
+**Naming: CoPantry**
+The app went through several name candidates — "Fridge & Recipe Manager", "Kitchen Loop", "Mise" — before landing on CoPantry. The "co-" prefix signals collaboration and AI assistance (in the same family as Copilot, CoStar), while "pantry" grounds it immediately in the kitchen domain. The name also captures the core dynamic: you cook, CoPantry handles the tracking, planning, and reminders alongside you.
+
 **Meaningful units over generic defaults**
 The first version defaulted to "pieces" for anything it couldn't categorise — so a recipe might call for "4 pieces of tomatoes." That's ambiguous and unhelpful. I replaced the generic unit list with a structured set of natural measurements (whole, half, quarter, slice, clove, head, bunch, etc.) and updated the AI extraction prompt to use them. The result is ingredient data that actually reflects how people cook.
 
@@ -81,11 +84,11 @@ The original Home page was a dashboard of numbers — how many ingredients, how 
 The Home dashboard generates an AI insight on first load. Rather than regenerating it on every page interaction (Streamlit reruns the entire script on any click), the insight is cached in session state and refreshed only when explicitly requested. This keeps the experience fast and avoids unnecessary API calls.
 
 **Quantity-aware ingredient tracking**
-The first version of cookability checking only looked at ingredient names — if "eggs" were in the fridge, the recipe was considered makeable regardless of how many were left. I replaced this with real quantity math: the app now converts between compatible units (grams ↔ oz, cups ↔ ml, etc.) and checks whether you actually have enough. Marking a recipe as cooked automatically deducts the exact amounts used. The meal planner's shopping plan projects this depletion day by day and tells you the specific date you need to shop and exactly what to buy.
+The first version of cookability checking only looked at ingredient names — if "eggs" were in the pantry, the recipe was considered makeable regardless of how many were left. I replaced this with real quantity math: the app now converts between compatible units (grams ↔ oz, cups ↔ ml, etc.) and checks whether you actually have enough. Marking a recipe as cooked automatically deducts the exact amounts used. The meal planner's shopping plan projects this depletion day by day and tells you the specific date you need to shop and exactly what to buy.
 
 ## What I'd Build Next
 
-1. **Native mobile app** — the biggest friction point right now is updating the fridge on the go: you've just bought groceries, you're standing in the kitchen, and opening a web app on a laptop is an extra step. A mobile-first version with a quick-add flow, receipt scanning, and barcode scanning for pantry items would make the experience seamless in everyday use
+1. **Native mobile app** — the biggest friction point right now is updating the pantry on the go: you've just bought groceries, you're standing in the kitchen, and opening a web app on a laptop is an extra step. A mobile-first version with a quick-add flow, receipt scanning, and barcode scanning for pantry items would make the experience seamless in everyday use
 2. **Expiry date tracking** — alert when ingredients are approaching their use-by date to further reduce waste
 3. **Nutritional information** — surface calorie and macro data alongside recipes
 4. **Grocery delivery integration** — connect the shopping list directly to Instacart or Amazon Fresh for one-click ordering
@@ -97,6 +100,7 @@ with st.expander("📋 Changelog"):
     st.markdown("""
 | Version | Changes |
 |---|---|
+| v11 | Rebranded to CoPantry; fixed "fridge" references to "pantry" across all pages; underlined content links; updated Getting Started with clickable page links |
 | v10 | Ingredient location tagging (Fridge/Freezer/Pantry/Other); breakfast/lunch/dinner meal planning; persistent meal plan saved to database; Home page redesigned as daily morning briefing with today's meals, thaw reminders, and shopping deadlines |
 | v9 | Renamed Fridge to Pantry to better reflect full ingredient inventory; AI-generated per-ingredient storage tips; date added and last updated tracking; column headers on ingredient table |
 | v8 | Quantity-aware ingredient system: unit conversion (grams ↔ oz, cups ↔ ml, etc.), automatic pantry deduction when a recipe is marked as cooked, meal plan shopping projection with a specific shop-by date |

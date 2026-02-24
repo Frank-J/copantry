@@ -3,11 +3,11 @@ from database import get_ingredients, get_recipes
 from gemini_client import suggest_recipes
 from utils import apply_sidebar_style
 
-st.set_page_config(page_title="Suggestions", page_icon="💡", layout="wide")
+st.set_page_config(page_title="CoPantry · Suggestions", page_icon="💡", layout="wide")
 apply_sidebar_style()
 
 st.title("💡 Recipe Suggestions")
-st.markdown("Get AI-powered recipe ideas based on what's in your fridge.")
+st.markdown("Get AI-powered recipe ideas based on what's in your pantry.")
 
 st.divider()
 
@@ -18,7 +18,7 @@ if not ingredients:
     st.warning("Your pantry is empty — add some ingredients to get suggestions.")
     st.page_link("pages/3_Pantry.py", label="Go to Pantry →")
 else:
-    st.markdown("**Currently in your fridge:**")
+    st.markdown("**Currently in your pantry:**")
     fridge_summary = ", ".join([f"{i['name']} ({i['amount']} {i['unit']})" for i in ingredients])
     st.write(fridge_summary)
 

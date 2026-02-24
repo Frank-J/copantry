@@ -3,7 +3,7 @@ from utils import apply_sidebar_style
 from database import get_recipes, get_ingredients
 from gemini_client import generate_shopping_list
 
-st.set_page_config(page_title="Shopping List", page_icon="🛒", layout="wide")
+st.set_page_config(page_title="CoPantry · Shopping List", page_icon="🛒", layout="wide")
 apply_sidebar_style()
 
 st.title("🛒 Shopping List")
@@ -38,7 +38,7 @@ else:
         st.page_link("pages/3_Pantry.py", label="Add Pantry Ingredients →")
 
     if st.button("Generate Shopping List", use_container_width=True, type="primary"):
-        with st.spinner("Checking your fridge..."):
+        with st.spinner("Checking your pantry..."):
             result = generate_shopping_list(selected_recipe, fridge)
             st.session_state["shopping_list"] = result
 

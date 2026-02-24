@@ -4,7 +4,7 @@ from database import get_recipes, add_recipe, update_recipe, delete_recipe, log_
 from gemini_client import extract_recipe_from_images, extract_recipe_from_pdf
 from constants import UNITS
 
-st.set_page_config(page_title="Recipes", page_icon="📖", layout="wide")
+st.set_page_config(page_title="CoPantry · Recipes", page_icon="📖", layout="wide")
 apply_sidebar_style()
 
 st.title("📖 Recipes")

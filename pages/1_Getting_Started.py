@@ -1,7 +1,7 @@
 import streamlit as st
 from utils import apply_sidebar_style
 
-st.set_page_config(page_title="Getting Started", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="CoPantry · Getting Started", page_icon="🚀", layout="wide")
 apply_sidebar_style()
 
 st.title("🚀 Getting Started")

@@ -17,7 +17,7 @@ from database import (
 initialize_db()
 from gemini_client import generate_home_insight
 
-st.set_page_config(page_title="Home", page_icon="🏠", layout="wide")
+st.set_page_config(page_title="CoPantry · Home", page_icon="🏠", layout="wide")
 apply_sidebar_style()
 
 st.title("🏠 Home")

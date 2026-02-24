@@ -1,7 +1,7 @@
 import streamlit as st
 from utils import apply_sidebar_style
 
-st.set_page_config(page_title="Feedback", page_icon="💬", layout="wide")
+st.set_page_config(page_title="CoPantry · Feedback", page_icon="💬", layout="wide")
 apply_sidebar_style()
 
 st.title("💬 Feedback")

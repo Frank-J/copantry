@@ -6,7 +6,7 @@ from utils import apply_sidebar_style
 
 initialize_db()
 
-st.set_page_config(page_title="Meal Planner", page_icon="📅", layout="wide")
+st.set_page_config(page_title="CoPantry · Meal Planner", page_icon="📅", layout="wide")
 apply_sidebar_style()
 
 st.title("📅 Meal Planner")
