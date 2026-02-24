@@ -24,12 +24,13 @@ st.divider()
 st.markdown("""
 ## Step-by-Step Guide
 
-### 🧊 1. Set Up Your Fridge
-Go to the **Fridge** page and log everything you currently have at home. Be as specific as you can about amounts — this is what the AI uses when suggesting what you can cook and what to buy.
+### 🥫 1. Set Up Your Pantry
+Go to the **Pantry** page and log everything you currently have at home — fridge, freezer, and dry goods. Be as specific as you can about amounts — this is what drives recipe suggestions, cookability checks, and your shopping plan.
 
 **Tips:**
 - Use the unit dropdown to pick the most natural measurement (e.g. *whole* for tomatoes, *grams* for meat, *clove* for garlic)
-- Update your fridge whenever you buy groceries or use something up
+- Storage tips are shown for each ingredient so you know where to keep things and how long they last
+- Marking a recipe as cooked automatically deducts the ingredients from your pantry
 - The Home dashboard will flag any ingredients that aren't in any of your saved recipes — those are your most at-risk items for waste
 
 ---

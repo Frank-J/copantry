@@ -150,7 +150,7 @@ else:
         st.divider()
 
         if plan["fully_covered"]:
-            st.success("✅ Your fridge has everything needed for all planned meals.")
+            st.success("✅ Your pantry has everything needed for all planned meals.")
         else:
             shop_by_date = date.fromisoformat(plan["shop_by"])
             st.error(f"🛒 **Shop by {shop_by_date.strftime('%A, %b %d')}** — you'll start running short after that.")

@@ -197,6 +197,13 @@ def initialize_db():
             usage_entries,
         )
 
+    # Migrate: add updated_date column if it doesn't exist yet
+    try:
+        c.execute("ALTER TABLE ingredients ADD COLUMN updated_date TEXT")
+        c.execute("UPDATE ingredients SET updated_date = added_date WHERE updated_date IS NULL")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
     conn.commit()
     conn.close()
 
@@ -206,9 +213,10 @@ def initialize_db():
 def add_ingredient(name, amount, unit):
     conn = get_connection()
     c = conn.cursor()
+    now = datetime.now().isoformat()
     c.execute(
-        "INSERT INTO ingredients (name, amount, unit, added_date) VALUES (?, ?, ?, ?)",
-        (name, amount, unit, datetime.now().isoformat()),
+        "INSERT INTO ingredients (name, amount, unit, added_date, updated_date) VALUES (?, ?, ?, ?, ?)",
+        (name, amount, unit, now, now),
     )
     conn.commit()
     conn.close()
@@ -217,10 +225,13 @@ def add_ingredient(name, amount, unit):
 def get_ingredients():
     conn = get_connection()
     c = conn.cursor()
-    c.execute("SELECT id, name, amount, unit, added_date FROM ingredients ORDER BY name")
+    c.execute("SELECT id, name, amount, unit, added_date, updated_date FROM ingredients ORDER BY name")
     rows = c.fetchall()
     conn.close()
-    return [{"id": r[0], "name": r[1], "amount": r[2], "unit": r[3], "added_date": r[4]} for r in rows]
+    return [
+        {"id": r[0], "name": r[1], "amount": r[2], "unit": r[3], "added_date": r[4], "updated_date": r[5]}
+        for r in rows
+    ]
 
 
 def delete_ingredient(ingredient_id):
@@ -234,7 +245,10 @@ def delete_ingredient(ingredient_id):
 def update_ingredient_amount(ingredient_id, amount):
     conn = get_connection()
     c = conn.cursor()
-    c.execute("UPDATE ingredients SET amount = ? WHERE id = ?", (amount, ingredient_id))
+    c.execute(
+        "UPDATE ingredients SET amount = ?, updated_date = ? WHERE id = ?",
+        (amount, datetime.now().isoformat(), ingredient_id),
+    )
     conn.commit()
     conn.close()
 
@@ -395,8 +409,8 @@ def deduct_recipe_ingredients(recipe_id):
             c.execute("DELETE FROM ingredients WHERE id = ?", (fridge_id,))
         else:
             c.execute(
-                "UPDATE ingredients SET amount = ? WHERE id = ?",
-                (round(remaining, 3), fridge_id),
+                "UPDATE ingredients SET amount = ?, updated_date = ? WHERE id = ?",
+                (round(remaining, 3), datetime.now().isoformat(), fridge_id),
             )
     conn.commit()
     conn.close()

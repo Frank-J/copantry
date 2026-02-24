@@ -80,6 +80,26 @@ def extract_recipe_from_pdf(pdf_bytes):
     return _parse_gemini_json(response.text)
 
 
+def get_storage_tips(ingredient_names):
+    """Return a one-sentence storage tip for each ingredient name."""
+    client = _get_client()
+    names_list = "\n".join([f"- {name}" for name in ingredient_names])
+    prompt = f"""Give a brief storage tip for each ingredient below.
+Each tip should say where to store it (fridge, pantry, freezer, etc.) and the rough shelf life.
+Keep each tip to one sentence, 15 words or fewer.
+
+Ingredients:
+{names_list}
+
+Return ONLY valid JSON with no extra text or markdown, using the exact ingredient names as keys:
+{{
+    "Ingredient Name": "storage tip",
+    ...
+}}"""
+    response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+    return _parse_gemini_json(response.text)
+
+
 def suggest_recipes(fridge_ingredients, stored_recipes):
     """Suggest recipes based on current fridge contents."""
     client = _get_client()

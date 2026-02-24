@@ -34,8 +34,8 @@ else:
             st.write(f"- {ing['name']}: {ing['amount']} {ing['unit']}")
 
     if not fridge:
-        st.info("Your fridge is empty — the shopping list will include all recipe ingredients.")
-        st.page_link("pages/3_Fridge.py", label="Add Fridge Ingredients →")
+        st.info("Your pantry is empty — the shopping list will include all recipe ingredients.")
+        st.page_link("pages/3_Pantry.py", label="Add Pantry Ingredients →")
 
     if st.button("Generate Shopping List", use_container_width=True, type="primary"):
         with st.spinner("Checking your fridge..."):

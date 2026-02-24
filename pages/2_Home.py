@@ -27,7 +27,7 @@ forgotten = get_forgotten_ingredients()
 # KPI Cards
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.metric("Ingredients in Fridge", len(ingredients))
+    st.metric("Ingredients in Pantry", len(ingredients))
 with col2:
     st.metric("Saved Recipes", len(recipes))
 with col3:
@@ -91,12 +91,12 @@ st.subheader("✅ Recipes You Can Make Right Now")
 if not cookable:
     if not ingredients:
         st.info("Add ingredients to your fridge to see what you can cook.")
-        st.page_link("pages/3_Fridge.py", label="Go to Fridge →")
+        st.page_link("pages/3_Pantry.py", label="Go to Pantry →")
     elif not recipes:
         st.info("Add some recipes to see which ones you can make with your current ingredients.")
         st.page_link("pages/4_Recipes.py", label="Add a Recipe →")
     else:
-        st.info("None of your saved recipes are fully covered by your current fridge ingredients.")
+        st.info("None of your saved recipes are fully covered by your current pantry ingredients.")
 else:
     for recipe in cookable:
         st.write(f"- **{recipe['name']}** ({recipe['cooking_time']})")
@@ -107,8 +107,8 @@ st.divider()
 st.subheader("⚠️ Ingredients Not in Any Recipe")
 if not forgotten:
     if not ingredients:
-        st.info("No ingredients in your fridge yet.")
-        st.page_link("pages/3_Fridge.py", label="Go to Fridge →")
+        st.info("No ingredients in your pantry yet.")
+        st.page_link("pages/3_Pantry.py", label="Go to Pantry →")
     else:
         st.success("All your fridge ingredients are used in at least one saved recipe.")
 else:

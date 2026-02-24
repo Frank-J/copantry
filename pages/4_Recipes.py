@@ -184,7 +184,7 @@ else:
                 if st.button("✅ Cooked", key=f"cooked_{recipe['id']}"):
                     log_recipe_cooked(recipe["id"])
                     deduct_recipe_ingredients(recipe["id"])
-                    st.success("Logged! Fridge updated.")
+                    st.success("Logged! Pantry updated.")
                 if st.button("✏️ Edit", key=f"edit_recipe_{recipe['id']}"):
                     st.session_state["editing_recipe_id"] = recipe["id"]
                     st.rerun()

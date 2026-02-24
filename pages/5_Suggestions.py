@@ -15,8 +15,8 @@ ingredients = get_ingredients()
 recipes = get_recipes()
 
 if not ingredients:
-    st.warning("Your fridge is empty — add some ingredients to get suggestions.")
-    st.page_link("pages/3_Fridge.py", label="Go to Fridge →")
+    st.warning("Your pantry is empty — add some ingredients to get suggestions.")
+    st.page_link("pages/3_Pantry.py", label="Go to Pantry →")
 else:
     st.markdown("**Currently in your fridge:**")
     fridge_summary = ", ".join([f"{i['name']} ({i['amount']} {i['unit']})" for i in ingredients])
