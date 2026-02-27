@@ -26,7 +26,10 @@ st.title("🏠 Home")
 # ---------------------------------------------------------------------------
 # Load shared data
 # ---------------------------------------------------------------------------
-today = get_local_date()
+if "date_override" not in st.session_state:
+    st.session_state["date_override"] = get_local_date()
+today = st.session_state["date_override"]
+
 ingredients = get_ingredients()
 recipes = get_recipes()
 recipe_map = {r["name"]: r for r in recipes}
@@ -37,6 +40,15 @@ recipe_map = {r["name"]: r for r in recipes}
 day_name = today.strftime("%A")
 date_label = today.strftime("%B %-d")
 st.markdown(f"## Today — {day_name}, {date_label}")
+
+col_picker, col_caption = st.columns([1.5, 5])
+with col_picker:
+    new_date = st.date_input("date", value=today, label_visibility="collapsed", key="date_picker")
+    if new_date != today:
+        st.session_state["date_override"] = new_date
+        st.rerun()
+with col_caption:
+    st.caption("App uses UTC — adjust the date if today looks off.")
 
 today_meals = get_meals_for_date(today.isoformat())
 
@@ -280,4 +292,3 @@ if st.button("Refresh Insight"):
     del st.session_state["home_insight"]
     st.rerun()
 
-st.caption("Dates are based on UTC. If your local date looks off, the meal planner will still work correctly — just navigate to the right week.")
