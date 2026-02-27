@@ -56,11 +56,13 @@ for col, meal_type in zip([col_b, col_l, col_d], ["Breakfast", "Lunch", "Dinner"
             st.write(meal)
         if meal != EATING_OUT:
             if st.button("🍽️ Eating Out", key=f"eo_{meal_type}", use_container_width=True, type="secondary"):
+                st.session_state[f"prev_meal_{meal_type}"] = meal
                 save_meal_entry(today.isoformat(), meal_type, EATING_OUT)
                 st.rerun()
         else:
             if st.button("↩️ Undo", key=f"undo_{meal_type}", use_container_width=True, type="secondary"):
-                save_meal_entry(today.isoformat(), meal_type, UNPLANNED)
+                prev = st.session_state.get(f"prev_meal_{meal_type}", UNPLANNED)
+                save_meal_entry(today.isoformat(), meal_type, prev)
                 st.rerun()
 
 all_unplanned_today = all(v == UNPLANNED for v in today_meals.values())
