@@ -7,14 +7,15 @@ def get_local_date():
     Falls back to server date if JS hasn't resolved yet."""
     try:
         from streamlit_js_eval import streamlit_js_eval
-        from zoneinfo import ZoneInfo
-        from datetime import datetime
-        tz_name = streamlit_js_eval(
-            js_expressions="Intl.DateTimeFormat().resolvedOptions().timeZone",
-            key="browser_tz",
+        from datetime import datetime, timezone, timedelta
+        # getTimezoneOffset() returns minutes behind UTC (e.g. PST = +480)
+        offset = streamlit_js_eval(
+            js_expressions="new Date().getTimezoneOffset()",
+            key="tz_offset",
         )
-        if tz_name:
-            return datetime.now(ZoneInfo(tz_name)).date()
+        if offset is not None:
+            tz = timezone(timedelta(minutes=-int(offset)))
+            return datetime.now(tz).date()
     except Exception:
         pass
     return date.today()
