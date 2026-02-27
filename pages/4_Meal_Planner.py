@@ -10,7 +10,7 @@ from database import (
     get_shopping_plan,
 )
 from gemini_client import suggest_calendar_meals, reschedule_around_grocery_date
-from utils import apply_sidebar_style
+from utils import apply_sidebar_style, get_local_date
 
 initialize_db()
 
@@ -36,7 +36,7 @@ else:
     if "week_offset" not in st.session_state:
         st.session_state["week_offset"] = 0
 
-    today = date.today()
+    today = get_local_date()
     week_start = today + timedelta(weeks=st.session_state["week_offset"])
     week_dates = [week_start + timedelta(days=i) for i in range(7)]
 

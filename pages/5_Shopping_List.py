@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import date, timedelta
-from utils import apply_sidebar_style
+from utils import apply_sidebar_style, get_local_date
 from database import (
     initialize_db,
     get_recipes,
@@ -24,7 +24,7 @@ st.markdown("What you need to buy — derived from your meal plan, plus anything
 st.divider()
 
 recipes = get_recipes()
-today = date.today()
+today = get_local_date()
 
 # ---------------------------------------------------------------------------
 # Section 1: Meal plan-driven items

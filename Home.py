@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import date, timedelta
-from utils import apply_sidebar_style
+from utils import apply_sidebar_style, get_local_date
 from database import (
     initialize_db,
     get_ingredients,
@@ -25,7 +25,7 @@ st.title("🏠 Home")
 # ---------------------------------------------------------------------------
 # Load shared data
 # ---------------------------------------------------------------------------
-today = date.today()
+today = get_local_date()
 ingredients = get_ingredients()
 recipes = get_recipes()
 recipe_map = {r["name"]: r for r in recipes}
