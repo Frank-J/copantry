@@ -72,6 +72,30 @@ if all_unplanned_today:
 # ---------------------------------------------------------------------------
 # Section 2: Ahead of Time (prep reminders)
 # ---------------------------------------------------------------------------
+
+def _ing(text):
+    """Highlight an ingredient name in dark blue."""
+    return f'<span style="font-weight:700;color:#1a56db;">{text}</span>'
+
+def _dt(text):
+    """Highlight a date in dark orange."""
+    return f'<span style="font-weight:700;color:#9a3412;">{text}</span>'
+
+def _callout(level, html):
+    """Render a styled callout box with HTML content."""
+    styles = {
+        "info":    ("#eff6ff", "#3b82f6"),
+        "warning": ("#fffbeb", "#f59e0b"),
+        "error":   ("#fef2f2", "#ef4444"),
+    }
+    bg, border = styles[level]
+    st.markdown(
+        f'<div style="background:{bg};border-left:4px solid {border};'
+        f'padding:12px 16px;border-radius:4px;margin-bottom:8px;line-height:1.7;">'
+        f'{html}</div>',
+        unsafe_allow_html=True,
+    )
+
 thaw_reminders = []
 
 # Build freezer ingredient map from pantry
@@ -96,11 +120,11 @@ if freezer_items and recipes:
                     display_name = freezer_items[ing_key]
                     if days_ahead == 1:
                         thaw_reminders.append(
-                            f"❄️ Take **{display_name}** out of the freezer today — needed for {meal_name} tomorrow (**{check_date_label}**)"
+                            f"❄️ Take {_ing(display_name)} out of the freezer today — needed for {meal_name} tomorrow ({_dt(check_date_label)})"
                         )
                     else:
                         thaw_reminders.append(
-                            f"❄️ Take **{display_name}** out tomorrow — needed for {meal_name} on **{check_date_label}**"
+                            f"❄️ Take {_ing(display_name)} out tomorrow — needed for {meal_name} on {_dt(check_date_label)}"
                         )
 
 # Shopping reminder — use next 7 days of planned meals
@@ -120,16 +144,16 @@ if shop_plan and not shop_plan["fully_covered"]:
     shop_by = date.fromisoformat(shop_plan["shop_by"])
     days_until = (shop_by - today).days
     top_items = [item["name"] for item in shop_plan["items"][:3]]
-    top_str = ", ".join(f"**{name}**" for name in top_items)
-    today_label = f"**today, {today.strftime('%A, %b %-d')}**"
-    tomorrow_label = f"**tomorrow, {(today + timedelta(days=1)).strftime('%A, %b %-d')}**"
+    top_str = ", ".join(_ing(name) for name in top_items)
+    today_label = _dt(f"today, {today.strftime('%A, %b %-d')}")
+    tomorrow_label = _dt(f"tomorrow, {(today + timedelta(days=1)).strftime('%A, %b %-d')}")
 
     if days_until <= 0:
         shopping_reminder = ("error", f"⚠️ Go shopping {today_label} — running short on {top_str}")
     elif days_until == 1:
         shopping_reminder = ("warning", f"🛒 Shop {tomorrow_label} before you run out of {top_str}")
     else:
-        shopping_reminder = ("info", f"🗓️ Plan to shop by **{shop_by.strftime('%A, %b %-d')}** — {len(shop_plan['items'])} item(s) needed")
+        shopping_reminder = ("info", f"🗓️ Plan to shop by {_dt(shop_by.strftime('%A, %b %-d'))} — {len(shop_plan['items'])} item(s) needed")
 
 has_ahead = thaw_reminders or shopping_reminder
 if has_ahead:
@@ -137,16 +161,11 @@ if has_ahead:
     st.markdown("## What to Do Today")
 
     for reminder in thaw_reminders:
-        st.info(reminder)
+        _callout("info", reminder)
 
     if shopping_reminder:
         level, msg = shopping_reminder
-        if level == "error":
-            st.error(msg)
-        elif level == "warning":
-            st.warning(msg)
-        else:
-            st.info(msg)
+        _callout(level, msg)
 
 # ---------------------------------------------------------------------------
 # Section 3: Plan For (the week ahead)
