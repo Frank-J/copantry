@@ -90,7 +90,7 @@ def _callout(level, html):
     }
     bg, border = styles[level]
     st.markdown(
-        f'<div style="background:{bg};border-left:4px solid {border};'
+        f'<div style="background:{bg};border-left:4px solid {border};color:#1f2937;'
         f'padding:12px 16px;border-radius:4px;margin-bottom:8px;line-height:1.7;">'
         f'{html}</div>',
         unsafe_allow_html=True,
