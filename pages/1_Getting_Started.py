@@ -36,7 +36,7 @@ Log everything you currently have at home — fridge, freezer, and dry goods. Be
 - Marking a recipe as cooked automatically deducts the ingredients from your pantry
 - The Home dashboard will flag any ingredients that aren't in any of your saved recipes — those are your most at-risk items for waste
 """)
-st.page_link("pages/3_Pantry.py", label="Go to Pantry →")
+st.page_link("pages/2_Pantry.py", label="Go to Pantry →")
 
 st.markdown("---")
 
@@ -56,7 +56,7 @@ Take a photo of a recipe card, or upload a PDF. The AI reads the name, ingredien
 Type the recipe details directly. Add ingredients one per line in the format: `Name, Amount, Unit`
 (e.g. `Chicken Breast, 500, grams`)
 """)
-st.page_link("pages/4_Recipes.py", label="Go to Recipes →")
+st.page_link("pages/3_Recipes.py", label="Go to Recipes →")
 
 st.markdown("---")
 
@@ -68,7 +68,7 @@ Click the button to see what you can cook. The AI looks at your current fridge c
 - Which of your saved recipes you can make right now
 - New recipe ideas based on what you have, even if they're not saved yet
 """)
-st.page_link("pages/5_Suggestions.py", label="Go to Suggestions →")
+st.page_link("pages/4_Suggestions.py", label="Go to Suggestions →")
 
 st.markdown("---")
 
@@ -78,7 +78,7 @@ st.markdown("""
 
 Plan breakfast, lunch, and dinner for each day of the week. Changes are saved automatically. You can also use AI to fill in any unplanned days.
 """)
-st.page_link("pages/6_Meal_Planner.py", label="Go to Meal Planner →")
+st.page_link("pages/5_Meal_Planner.py", label="Go to Meal Planner →")
 
 st.markdown("---")
 
@@ -88,7 +88,7 @@ st.markdown("""
 
 Pick a recipe and the AI compares what it needs against what's in your pantry — telling you exactly what to buy and how much.
 """)
-st.page_link("pages/7_Shopping_List.py", label="Go to Shopping List →")
+st.page_link("pages/6_Shopping_List.py", label="Go to Shopping List →")
 
 st.markdown("---")
 
@@ -98,7 +98,7 @@ st.markdown("""
 
 Hit the **✅ Cooked** button after making a meal. Over time this builds your cooking history, which powers the *Most Cooked Recipes* and *Most Used Ingredients* stats on the Home dashboard.
 """)
-st.page_link("pages/4_Recipes.py", label="Go to Recipes →")
+st.page_link("pages/3_Recipes.py", label="Go to Recipes →")
 
 st.markdown("---")
 
@@ -112,7 +112,7 @@ Open the app each morning to see your daily briefing:
 - Shopping deadline and what you'll run short on
 - A 7-day week view so you can spot gaps and plan ahead
 """)
-st.page_link("pages/2_Home.py", label="Go to Home →")
+st.page_link("Home.py", label="Go to Home →")
 
 st.divider()
 

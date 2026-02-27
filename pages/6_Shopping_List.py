@@ -43,10 +43,10 @@ for day_str, day_meals in next7_entries.items():
 
 if not home_meals_flat:
     st.info("No home meals planned for the next 7 days.")
-    st.page_link("pages/6_Meal_Planner.py", label="Go to Meal Planner →")
+    st.page_link("pages/5_Meal_Planner.py", label="Go to Meal Planner →")
 elif not recipes:
     st.info("No recipes saved yet.")
-    st.page_link("pages/4_Recipes.py", label="Add a Recipe →")
+    st.page_link("pages/3_Recipes.py", label="Add a Recipe →")
 else:
     plan = get_shopping_plan(home_meals_flat, recipes)
 
