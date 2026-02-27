@@ -11,11 +11,16 @@ from database import (
 )
 from gemini_client import suggest_calendar_meals, reschedule_around_grocery_date
 from utils import apply_sidebar_style, get_local_date
+from streamlit_js_eval import streamlit_js_eval
 
 initialize_db()
 
 st.set_page_config(page_title="CoPantry · Meal Planner", page_icon="📅", layout="wide")
 apply_sidebar_style()
+
+tz_offset = streamlit_js_eval(js_expressions="new Date().getTimezoneOffset()", key="tz_offset")
+if tz_offset is None:
+    st.stop()
 
 st.title("📅 Meal Planner")
 st.markdown("Plan your meals for the week. Changes are saved automatically.")
@@ -36,7 +41,7 @@ else:
     if "week_offset" not in st.session_state:
         st.session_state["week_offset"] = 0
 
-    today = get_local_date()
+    today = get_local_date(tz_offset)
     week_start = today + timedelta(weeks=st.session_state["week_offset"])
     week_dates = [week_start + timedelta(days=i) for i in range(7)]
 
