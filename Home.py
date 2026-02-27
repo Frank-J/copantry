@@ -12,6 +12,7 @@ from database import (
     get_meals_for_date,
     get_meal_entries,
     get_shopping_plan,
+    save_meal_entry,
 )
 
 initialize_db()
@@ -40,6 +41,7 @@ st.markdown(f"## Today — {day_name}, {date_label}")
 today_meals = get_meals_for_date(today.isoformat())
 
 UNPLANNED = "— Unplanned —"
+EATING_OUT = "🍽️ Eating Out"
 MEAL_ICONS = {"Breakfast": "🌅", "Lunch": "☀️", "Dinner": "🌙"}
 
 col_b, col_l, col_d = st.columns(3)
@@ -52,6 +54,14 @@ for col, meal_type in zip([col_b, col_l, col_d], ["Breakfast", "Lunch", "Dinner"
             st.caption("— Unplanned —")
         else:
             st.write(meal)
+        if meal != EATING_OUT:
+            if st.button("🍽️ Eating Out", key=f"eo_{meal_type}", use_container_width=True, type="secondary"):
+                save_meal_entry(today.isoformat(), meal_type, EATING_OUT)
+                st.rerun()
+        else:
+            if st.button("↩️ Undo", key=f"undo_{meal_type}", use_container_width=True, type="secondary"):
+                save_meal_entry(today.isoformat(), meal_type, UNPLANNED)
+                st.rerun()
 
 all_unplanned_today = all(v == UNPLANNED for v in today_meals.values())
 if all_unplanned_today:
