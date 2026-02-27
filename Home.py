@@ -82,7 +82,7 @@ if freezer_items and recipes:
     for days_ahead in [1, 2]:
         check_date = today + timedelta(days=days_ahead)
         check_meals = get_meals_for_date(check_date.isoformat())
-        check_day_label = check_date.strftime("%A")
+        check_date_label = check_date.strftime("%A, %b %-d")
 
         for meal_type, meal_name in check_meals.items():
             if meal_name == UNPLANNED or meal_name.startswith("🍽️") or meal_name.startswith("🏖️"):
@@ -96,11 +96,11 @@ if freezer_items and recipes:
                     display_name = freezer_items[ing_key]
                     if days_ahead == 1:
                         thaw_reminders.append(
-                            f"❄️ Take **{display_name}** out of the freezer today — needed for **{meal_name}** tomorrow ({check_day_label})"
+                            f"❄️ Take **{display_name}** out of the freezer today — needed for {meal_name} tomorrow (**{check_date_label}**)"
                         )
                     else:
                         thaw_reminders.append(
-                            f"❄️ Take **{display_name}** out tomorrow — needed for **{meal_name}** on {check_day_label}"
+                            f"❄️ Take **{display_name}** out tomorrow — needed for {meal_name} on **{check_date_label}**"
                         )
 
 # Shopping reminder — use next 7 days of planned meals
@@ -120,14 +120,16 @@ if shop_plan and not shop_plan["fully_covered"]:
     shop_by = date.fromisoformat(shop_plan["shop_by"])
     days_until = (shop_by - today).days
     top_items = [item["name"] for item in shop_plan["items"][:3]]
-    top_str = ", ".join(top_items)
+    top_str = ", ".join(f"**{name}**" for name in top_items)
+    today_label = f"**today, {today.strftime('%A, %b %-d')}**"
+    tomorrow_label = f"**tomorrow, {(today + timedelta(days=1)).strftime('%A, %b %-d')}**"
 
     if days_until <= 0:
-        shopping_reminder = ("error", f"⚠️ Go shopping today — running short on {top_str}")
+        shopping_reminder = ("error", f"⚠️ Go shopping {today_label} — running short on {top_str}")
     elif days_until == 1:
-        shopping_reminder = ("warning", f"🛒 Shop tomorrow before you run out of {top_str}")
+        shopping_reminder = ("warning", f"🛒 Shop {tomorrow_label} before you run out of {top_str}")
     else:
-        shopping_reminder = ("info", f"🗓️ Plan to shop by {shop_by.strftime('%A')} — {len(shop_plan['items'])} item(s) needed")
+        shopping_reminder = ("info", f"🗓️ Plan to shop by **{shop_by.strftime('%A, %b %-d')}** — {len(shop_plan['items'])} item(s) needed")
 
 has_ahead = thaw_reminders or shopping_reminder
 if has_ahead:
