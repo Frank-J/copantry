@@ -105,19 +105,32 @@ def initialize_db():
     c.execute("SELECT COUNT(*) FROM ingredients")
     if c.fetchone()[0] == 0:
         sample_ingredients = [
-            # Used in recipes
-            ("Eggs", 6, "whole", ago(1), "Fridge"),
-            ("Milk", 2, "cups", ago(1), "Fridge"),
+            # Core fridge items
+            ("Eggs", 12, "whole", ago(1), "Fridge"),
+            ("Milk", 3, "cups", ago(1), "Fridge"),
             ("Butter", 200, "grams", ago(3), "Fridge"),
-            ("Pasta", 500, "grams", ago(3), "Pantry"),
-            ("Tomatoes", 4, "whole", ago(2), "Pantry"),
-            ("Garlic", 5, "cloves", ago(5), "Pantry"),
-            ("Olive Oil", 1, "cups", ago(7), "Pantry"),
-            ("Chicken Breast", 500, "grams", ago(2), "Freezer"),
-            ("Onion", 2, "whole", ago(4), "Pantry"),
-            # Forgotten — in pantry but not in any recipe
-            ("Cornstarch", 1, "tablespoons", ago(14), "Pantry"),
+            ("Avocado", 2, "whole", ago(2), "Fridge"),
+            ("Lemon", 3, "whole", ago(3), "Fridge"),
+            ("Cheddar Cheese", 200, "grams", ago(4), "Fridge"),
             ("Lettuce", 1, "head", ago(5), "Fridge"),
+            # Freezer
+            ("Chicken Breast", 600, "grams", ago(2), "Freezer"),
+            # Pantry dry goods
+            ("Pasta", 600, "grams", ago(3), "Pantry"),
+            ("Rice", 400, "grams", ago(5), "Pantry"),
+            ("Oats", 2, "cups", ago(7), "Pantry"),
+            ("Bread", 8, "slices", ago(2), "Pantry"),
+            # Pantry produce
+            ("Tomatoes", 6, "whole", ago(2), "Pantry"),
+            ("Garlic", 10, "cloves", ago(5), "Pantry"),
+            ("Onion", 3, "whole", ago(4), "Pantry"),
+            ("Banana", 4, "whole", ago(1), "Pantry"),
+            # Pantry condiments & oils
+            ("Olive Oil", 1, "cups", ago(7), "Pantry"),
+            ("Soy Sauce", 0.5, "cups", ago(7), "Pantry"),
+            # Forgotten — in pantry but not used in any saved recipe
+            ("Cornstarch", 1, "tablespoons", ago(14), "Pantry"),
+            ("Fish Sauce", 0.25, "cups", ago(21), "Pantry"),
         ]
         c.executemany(
             "INSERT INTO ingredients (name, amount, unit, added_date, location) VALUES (?, ?, ?, ?, ?)",
@@ -139,6 +152,42 @@ def initialize_db():
                 ago(14),
             ),
             (
+                "Avocado Toast",
+                "10 minutes",
+                json.dumps([
+                    {"name": "Bread", "amount": 2, "unit": "slices"},
+                    {"name": "Avocado", "amount": 1, "unit": "whole"},
+                    {"name": "Eggs", "amount": 2, "unit": "whole"},
+                    {"name": "Lemon", "amount": 0.5, "unit": "whole"},
+                ]),
+                "1. Toast bread until golden. 2. Mash avocado with a squeeze of lemon, salt and pepper. 3. Fry or poach eggs. 4. Spread avocado on toast and top with egg.",
+                ago(10),
+            ),
+            (
+                "Banana Oatmeal",
+                "10 minutes",
+                json.dumps([
+                    {"name": "Oats", "amount": 0.5, "unit": "cups"},
+                    {"name": "Milk", "amount": 1, "unit": "cups"},
+                    {"name": "Banana", "amount": 1, "unit": "whole"},
+                    {"name": "Butter", "amount": 10, "unit": "grams"},
+                ]),
+                "1. Combine oats and milk in a saucepan over medium heat. 2. Stir until thickened, about 5 minutes. 3. Slice banana on top and add a small pat of butter.",
+                ago(9),
+            ),
+            (
+                "Cheesy Omelette",
+                "15 minutes",
+                json.dumps([
+                    {"name": "Eggs", "amount": 3, "unit": "whole"},
+                    {"name": "Milk", "amount": 2, "unit": "tablespoons"},
+                    {"name": "Butter", "amount": 15, "unit": "grams"},
+                    {"name": "Cheddar Cheese", "amount": 50, "unit": "grams"},
+                ]),
+                "1. Whisk eggs and milk with salt and pepper. 2. Melt butter in a non-stick pan over medium heat. 3. Pour in egg mixture and let set at the edges. 4. Add cheese, fold omelette in half, and serve.",
+                ago(8),
+            ),
+            (
                 "Spaghetti Aglio e Olio",
                 "20 minutes",
                 json.dumps([
@@ -150,16 +199,17 @@ def initialize_db():
                 ago(12),
             ),
             (
-                "Garlic Butter Chicken",
-                "35 minutes",
+                "Fried Rice",
+                "20 minutes",
                 json.dumps([
-                    {"name": "Chicken Breast", "amount": 500, "unit": "grams"},
-                    {"name": "Butter", "amount": 30, "unit": "grams"},
-                    {"name": "Garlic", "amount": 3, "unit": "cloves"},
-                    {"name": "Olive Oil", "amount": 2, "unit": "tablespoons"},
+                    {"name": "Rice", "amount": 200, "unit": "grams"},
+                    {"name": "Eggs", "amount": 2, "unit": "whole"},
+                    {"name": "Soy Sauce", "amount": 2, "unit": "tablespoons"},
+                    {"name": "Garlic", "amount": 2, "unit": "cloves"},
+                    {"name": "Onion", "amount": 1, "unit": "whole"},
                 ]),
-                "1. Season chicken with salt and pepper. 2. Heat olive oil in a pan over medium-high heat. 3. Cook chicken 6-7 minutes per side. 4. Add butter and garlic, baste chicken for 2 minutes.",
-                ago(10),
+                "1. Cook rice if not already cooked. 2. Beat eggs and scramble in a hot wok. 3. Add cold rice and stir-fry for 3 minutes. 4. Add garlic, onion, and soy sauce. Toss well and serve.",
+                ago(7),
             ),
             (
                 "Tomato Pasta",
@@ -172,7 +222,19 @@ def initialize_db():
                     {"name": "Onion", "amount": 1, "unit": "whole"},
                 ]),
                 "1. Dice tomatoes and onion. 2. Sauté garlic and onion in olive oil. 3. Add tomatoes and simmer 10 minutes. 4. Toss with cooked pasta.",
-                ago(7),
+                ago(11),
+            ),
+            (
+                "Garlic Butter Chicken",
+                "35 minutes",
+                json.dumps([
+                    {"name": "Chicken Breast", "amount": 500, "unit": "grams"},
+                    {"name": "Butter", "amount": 30, "unit": "grams"},
+                    {"name": "Garlic", "amount": 3, "unit": "cloves"},
+                    {"name": "Olive Oil", "amount": 2, "unit": "tablespoons"},
+                ]),
+                "1. Season chicken with salt and pepper. 2. Heat olive oil in a pan over medium-high heat. 3. Cook chicken 6-7 minutes per side. 4. Add butter and garlic, baste chicken for 2 minutes.",
+                ago(13),
             ),
             (
                 "Lemon Herb Salmon",
@@ -184,7 +246,7 @@ def initialize_db():
                     {"name": "Garlic", "amount": 2, "unit": "cloves"},
                 ]),
                 "1. Season salmon with salt and pepper. 2. Melt butter in a pan. 3. Cook salmon 4 minutes each side. 4. Add garlic and squeeze lemon over the top.",
-                ago(5),
+                ago(6),
             ),
         ]
         c.executemany(
@@ -197,20 +259,36 @@ def initialize_db():
         recipe_map = {name: rid for rid, name in c.fetchall()}
 
         usage_entries = [
-            # Scrambled Eggs — most cooked (4 times)
+            # Scrambled Eggs — most cooked (5 times)
             (recipe_map["Scrambled Eggs"], ago(1)),
             (recipe_map["Scrambled Eggs"], ago(4)),
             (recipe_map["Scrambled Eggs"], ago(8)),
-            (recipe_map["Scrambled Eggs"], ago(13)),
+            (recipe_map["Scrambled Eggs"], ago(11)),
+            (recipe_map["Scrambled Eggs"], ago(14)),
+            # Avocado Toast — 4 times
+            (recipe_map["Avocado Toast"], ago(2)),
+            (recipe_map["Avocado Toast"], ago(5)),
+            (recipe_map["Avocado Toast"], ago(9)),
+            (recipe_map["Avocado Toast"], ago(13)),
+            # Banana Oatmeal — 3 times
+            (recipe_map["Banana Oatmeal"], ago(3)),
+            (recipe_map["Banana Oatmeal"], ago(7)),
+            (recipe_map["Banana Oatmeal"], ago(12)),
             # Spaghetti Aglio e Olio — 3 times
             (recipe_map["Spaghetti Aglio e Olio"], ago(2)),
             (recipe_map["Spaghetti Aglio e Olio"], ago(6)),
-            (recipe_map["Spaghetti Aglio e Olio"], ago(11)),
+            (recipe_map["Spaghetti Aglio e Olio"], ago(10)),
+            # Fried Rice — 2 times
+            (recipe_map["Fried Rice"], ago(4)),
+            (recipe_map["Fried Rice"], ago(9)),
             # Garlic Butter Chicken — 2 times
             (recipe_map["Garlic Butter Chicken"], ago(3)),
-            (recipe_map["Garlic Butter Chicken"], ago(9)),
-            # Tomato Pasta — 1 time
-            (recipe_map["Tomato Pasta"], ago(7)),
+            (recipe_map["Garlic Butter Chicken"], ago(10)),
+            # Tomato Pasta — 2 times
+            (recipe_map["Tomato Pasta"], ago(5)),
+            (recipe_map["Tomato Pasta"], ago(12)),
+            # Cheesy Omelette — 1 time
+            (recipe_map["Cheesy Omelette"], ago(6)),
         ]
         c.executemany(
             "INSERT INTO recipe_usage (recipe_id, cooked_at) VALUES (?, ?)",
@@ -223,13 +301,34 @@ def initialize_db():
         today = date.today()
         fwd = lambda d: (today + timedelta(days=d)).isoformat()
         sample_plan = [
+            # Today
             (fwd(0), "Breakfast", "Scrambled Eggs"),
+            (fwd(0), "Lunch",     "Avocado Toast"),
             (fwd(0), "Dinner",    "Tomato Pasta"),
+            # +1
+            (fwd(1), "Breakfast", "Banana Oatmeal"),
             (fwd(1), "Lunch",     "Spaghetti Aglio e Olio"),
             (fwd(1), "Dinner",    "🍽️ Eating Out"),
+            # +2
             (fwd(2), "Breakfast", "Scrambled Eggs"),
+            (fwd(2), "Lunch",     "Avocado Toast"),
             (fwd(2), "Dinner",    "Garlic Butter Chicken"),
+            # +3
+            (fwd(3), "Breakfast", "Banana Oatmeal"),
+            (fwd(3), "Lunch",     "Fried Rice"),
+            (fwd(3), "Dinner",    "Tomato Pasta"),
+            # +4
+            (fwd(4), "Breakfast", "Cheesy Omelette"),
+            (fwd(4), "Lunch",     "Fried Rice"),
             (fwd(4), "Dinner",    "Lemon Herb Salmon"),
+            # +5
+            (fwd(5), "Breakfast", "Banana Oatmeal"),
+            (fwd(5), "Lunch",     "🍽️ Eating Out"),
+            (fwd(5), "Dinner",    "Spaghetti Aglio e Olio"),
+            # +6
+            (fwd(6), "Breakfast", "Scrambled Eggs"),
+            (fwd(6), "Lunch",     "Avocado Toast"),
+            (fwd(6), "Dinner",    "Garlic Butter Chicken"),
         ]
         c.executemany(
             "INSERT OR IGNORE INTO meal_plan (plan_date, meal_type, meal, updated_at) VALUES (?, ?, ?, ?)",
