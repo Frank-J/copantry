@@ -48,7 +48,7 @@ with col_picker:
         st.session_state["date_override"] = new_date
         st.rerun()
 with col_caption:
-    st.caption("App uses UTC — adjust the date if today looks off.")
+    st.caption("Not the right date for your timezone? Feel free to correct it.")
 
 today_meals = get_meals_for_date(today.isoformat())
 
