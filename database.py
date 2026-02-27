@@ -54,7 +54,9 @@ def initialize_db():
             name TEXT NOT NULL,
             amount REAL NOT NULL,
             unit TEXT NOT NULL,
-            added_date TEXT NOT NULL
+            added_date TEXT NOT NULL,
+            updated_date TEXT,
+            location TEXT DEFAULT 'Fridge'
         )
     """)
 
