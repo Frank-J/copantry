@@ -16,7 +16,7 @@ recipes = get_recipes()
 
 if not ingredients:
     st.warning("Your pantry is empty — add some ingredients to get suggestions.")
-    st.page_link("pages/2_Pantry.py", label="Go to Pantry →")
+    st.page_link("pages/1_Pantry.py", label="Go to Pantry →")
 else:
     # Section 1: Can cook right now
     st.subheader("✅ Recipes You Can Make Right Now")
@@ -37,7 +37,7 @@ else:
 
     if not recipes:
         st.info("You have no saved recipes yet. Suggestions will still work, but adding recipes gives better results.")
-        st.page_link("pages/3_Recipes.py", label="Add a Recipe →")
+        st.page_link("pages/2_Recipes.py", label="Add a Recipe →")
 
     st.write("")
     if st.button("Get AI Recipe Suggestions", use_container_width=True, type="primary"):

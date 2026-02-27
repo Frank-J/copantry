@@ -26,7 +26,7 @@ recipes = get_recipes()
 
 if not recipes:
     st.warning("No saved recipes yet — add some recipes to start planning.")
-    st.page_link("pages/3_Recipes.py", label="Add a Recipe →")
+    st.page_link("pages/2_Recipes.py", label="Add a Recipe →")
 else:
     # Sort recipes by most-cooked so frequent meals appear first
     cook_counts = get_recipe_cook_counts()
@@ -189,7 +189,7 @@ else:
                 f"🛒 You're short on {item_count} item(s) this week — not enough to warrant a dedicated trip. "
                 f"Check your Shopping List for details."
             )
-            st.page_link("pages/6_Shopping_List.py", label="View Shopping List →")
+            st.page_link("pages/5_Shopping_List.py", label="View Shopping List →")
 
         else:
             st.divider()
@@ -327,4 +327,4 @@ else:
                         st.error(f"Could not suggest meals: {e}")
 
     with col_shop:
-        st.page_link("pages/6_Shopping_List.py", label="🛒 View Shopping List →")
+        st.page_link("pages/5_Shopping_List.py", label="🛒 View Shopping List →")

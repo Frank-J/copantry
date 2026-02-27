@@ -55,7 +55,7 @@ for col, meal_type in zip([col_b, col_l, col_d], ["Breakfast", "Lunch", "Dinner"
 
 all_unplanned_today = all(v == UNPLANNED for v in today_meals.values())
 if all_unplanned_today:
-    st.caption("Nothing planned yet. [Go to Meal Planner →](pages/5_Meal_Planner)")
+    st.caption("Nothing planned yet. [Go to Meal Planner →](pages/4_Meal_Planner)")
 
 # ---------------------------------------------------------------------------
 # Section 2: Ahead of Time (prep reminders)
@@ -203,7 +203,7 @@ with st.expander("📊 Cooking Stats"):
         most_cooked = get_most_cooked_recipes()
         if not most_cooked:
             st.info("No cooking history yet.")
-            st.page_link("pages/3_Recipes.py", label="Mark a recipe as cooked →")
+            st.page_link("pages/2_Recipes.py", label="Mark a recipe as cooked →")
         else:
             for item in most_cooked:
                 st.write(f"**{item['name']}** — cooked {item['count']} time(s)")
@@ -217,7 +217,7 @@ with st.expander("📊 Cooking Stats"):
             for item in most_used:
                 st.write(f"**{item['name']}** — used {item['count']} time(s)")
 
-    st.page_link("pages/4_Suggestions.py", label="See what you can cook now →")
+    st.page_link("pages/3_Suggestions.py", label="See what you can cook now →")
 
 # ---------------------------------------------------------------------------
 # AI Insight (singular, below main sections)
