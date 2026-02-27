@@ -17,21 +17,16 @@ from database import (
 
 initialize_db()
 from gemini_client import generate_home_insight
-from streamlit_js_eval import streamlit_js_eval
 
 st.set_page_config(page_title="CoPantry · Home", page_icon="🏠", layout="wide")
 apply_sidebar_style()
-
-tz_offset = streamlit_js_eval(js_expressions="new Date().getTimezoneOffset()", key="tz_offset")
-if tz_offset is None:
-    st.stop()
 
 st.title("🏠 Home")
 
 # ---------------------------------------------------------------------------
 # Load shared data
 # ---------------------------------------------------------------------------
-today = get_local_date(tz_offset)
+today = get_local_date()
 ingredients = get_ingredients()
 recipes = get_recipes()
 recipe_map = {r["name"]: r for r in recipes}
@@ -284,3 +279,5 @@ st.markdown(st.session_state["home_insight"])
 if st.button("Refresh Insight"):
     del st.session_state["home_insight"]
     st.rerun()
+
+st.caption("Dates are based on UTC. If your local date looks off, the meal planner will still work correctly — just navigate to the right week.")

@@ -1,7 +1,6 @@
 import streamlit as st
 from datetime import date, timedelta
 from utils import apply_sidebar_style, get_local_date
-from streamlit_js_eval import streamlit_js_eval
 from database import (
     initialize_db,
     get_recipes,
@@ -19,17 +18,13 @@ initialize_db()
 st.set_page_config(page_title="CoPantry · Shopping List", page_icon="🛒", layout="wide")
 apply_sidebar_style()
 
-tz_offset = streamlit_js_eval(js_expressions="new Date().getTimezoneOffset()", key="tz_offset")
-if tz_offset is None:
-    st.stop()
-
 st.title("🛒 Shopping List")
 st.markdown("What you need to buy — derived from your meal plan, plus anything you add manually.")
 
 st.divider()
 
 recipes = get_recipes()
-today = get_local_date(tz_offset)
+today = get_local_date()
 
 # ---------------------------------------------------------------------------
 # Section 1: Meal plan-driven items
