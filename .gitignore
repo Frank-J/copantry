@@ -14,3 +14,6 @@ wheels/
 
 # SQLite database (seeded from code on startup)
 *.db
+
+# Personal notes — not for public repo
+docs/suggestions.md
