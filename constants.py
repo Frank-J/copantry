@@ -1,4 +1,4 @@
-AI_DAILY_LIMIT = 50
+AI_DAILY_LIMIT = 200
 
 UNITS = [
     # Whole items

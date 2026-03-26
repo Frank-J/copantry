@@ -14,7 +14,7 @@ def show_ai_limit_message():
     st.warning(
         "**Daily AI limit reached.** "
         "CoPantry uses Google Gemini AI to power features like recipe extraction, meal planning suggestions, and pantry insights. "
-        "To manage API costs, there is a shared daily limit of 50 AI calls across all visitors. "
+        "To manage API costs, there is a shared daily limit across all visitors. "
         "Today's limit has been reached. All AI features will be available again tomorrow. "
         "If you are evaluating this app and would like a live demo, feel free to reach out directly."
     )
