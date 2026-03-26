@@ -1,7 +1,9 @@
 import streamlit as st
 from database import get_ingredients, get_recipes, get_cookable_recipes
 from gemini_client import suggest_recipes
-from utils import apply_sidebar_style
+from utils import apply_sidebar_style, show_ai_limit_message
+from database import check_and_increment_quota
+from constants import AI_DAILY_LIMIT
 
 st.set_page_config(page_title="CoPantry · Suggestions", page_icon="💡", layout="wide")
 apply_sidebar_style()
@@ -41,9 +43,12 @@ else:
 
     st.write("")
     if st.button("Get AI Recipe Suggestions", use_container_width=True, type="primary"):
-        with st.spinner("Thinking about what you can cook..."):
-            suggestions = suggest_recipes(ingredients, recipes)
-            st.session_state["suggestions"] = suggestions
+        if not check_and_increment_quota(AI_DAILY_LIMIT):
+            show_ai_limit_message()
+        else:
+            with st.spinner("Thinking about what you can cook..."):
+                suggestions = suggest_recipes(ingredients, recipes)
+                st.session_state["suggestions"] = suggestions
 
     if "suggestions" in st.session_state:
         st.markdown(st.session_state["suggestions"])

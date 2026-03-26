@@ -1,5 +1,6 @@
 import os
 import io
+import time
 from google import genai
 from google.genai import types
 from PIL import Image
@@ -15,6 +16,22 @@ def _get_client():
     if not api_key:
         raise ValueError("GEMINI_API_KEY not found. Check your .env file or Streamlit secrets.")
     return genai.Client(api_key=api_key)
+
+
+def _generate_with_retry(client, **kwargs):
+    """Call generate_content with up to 3 attempts, retrying on 503 UNAVAILABLE."""
+    last_error = None
+    for attempt in range(3):
+        try:
+            return client.models.generate_content(**kwargs)
+        except Exception as e:
+            last_error = e
+            if "503" in str(e) or "UNAVAILABLE" in str(e):
+                if attempt < 2:
+                    time.sleep(3)
+                    continue
+            raise
+    raise last_error
 
 
 RECIPE_EXTRACTION_PROMPT = """
@@ -61,7 +78,7 @@ def extract_recipe_from_images(image_bytes_list):
     """Extract recipe from one or more images (e.g. front and back of a recipe card)."""
     client = _get_client()
     images = [Image.open(io.BytesIO(b)) for b in image_bytes_list]
-    response = client.models.generate_content(
+    response = _generate_with_retry(client,
         model=MODEL_NAME,
         contents=[RECIPE_EXTRACTION_PROMPT] + images,
     )
@@ -73,11 +90,51 @@ def extract_recipe_from_pdf(pdf_bytes):
     from google.genai import types
     client = _get_client()
     pdf_part = types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf")
-    response = client.models.generate_content(
+    response = _generate_with_retry(client,
         model=MODEL_NAME,
         contents=[RECIPE_EXTRACTION_PROMPT, pdf_part],
     )
     return _parse_gemini_json(response.text)
+
+
+def suggest_storage_locations_bulk(ingredient_names):
+    """Return recommended storage location and tip for multiple ingredients in one call."""
+    client = _get_client()
+    names_list = "\n".join([f"- {name}" for name in ingredient_names])
+    prompt = f"""For each ingredient below, recommend the best home storage location and give a brief tip.
+
+Ingredients:
+{names_list}
+
+Return ONLY valid JSON with no extra text or markdown, using the exact ingredient names as keys:
+{{
+    "Ingredient Name": {{"location": "Fridge", "tip": "brief tip, max 15 words"}},
+    ...
+}}
+
+Choose location from exactly one of: Fridge, Freezer, Pantry, Other"""
+    response = _generate_with_retry(client,model=MODEL_NAME, contents=prompt)
+    result = _parse_gemini_json(response.text)
+    for name in result:
+        if result[name].get("location") not in ["Fridge", "Freezer", "Pantry", "Other"]:
+            result[name]["location"] = "Fridge"
+    return result
+
+
+def suggest_storage_location(ingredient_name):
+    """Return the recommended storage location and a brief tip for a single ingredient."""
+    client = _get_client()
+    prompt = f"""For the ingredient "{ingredient_name}", recommend the best home storage location and give a brief tip.
+
+Return ONLY valid JSON with no extra text or markdown:
+{{"location": "Fridge", "tip": "brief storage tip, max 15 words"}}
+
+Choose location from exactly one of: Fridge, Freezer, Pantry, Other"""
+    response = _generate_with_retry(client,model=MODEL_NAME, contents=prompt)
+    result = _parse_gemini_json(response.text)
+    if result.get("location") not in ["Fridge", "Freezer", "Pantry", "Other"]:
+        result["location"] = "Fridge"
+    return result
 
 
 def get_storage_tips(ingredient_names):
@@ -96,7 +153,7 @@ Return ONLY valid JSON with no extra text or markdown, using the exact ingredien
     "Ingredient Name": "storage tip",
     ...
 }}"""
-    response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+    response = _generate_with_retry(client,model=MODEL_NAME, contents=prompt)
     return _parse_gemini_json(response.text)
 
 
@@ -123,7 +180,7 @@ def suggest_recipes(fridge_ingredients, stored_recipes):
     Keep the response clear and practical with headers for each section.
     """
 
-    response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+    response = _generate_with_retry(client,model=MODEL_NAME, contents=prompt)
     return response.text
 
 
@@ -147,7 +204,7 @@ def generate_meal_plan(recipes, days=7):
     Format it as a clear day-by-day schedule.
     """
 
-    response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+    response = _generate_with_retry(client,model=MODEL_NAME, contents=prompt)
     return response.text
 
 
@@ -177,11 +234,11 @@ def generate_home_insight(fridge_ingredients, recipes, cookable_recipes, forgott
     Be direct and practical. Format as short bullet points. Keep it under 100 words total.
     """
 
-    response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+    response = _generate_with_retry(client,model=MODEL_NAME, contents=prompt)
     return response.text
 
 
-def suggest_calendar_meals(recipes, unplanned_dates, current_week_plan):
+def suggest_calendar_meals(recipes, unplanned_dates, current_week_plan, expiring_ingredients=None):
     """Suggest recipes from the saved list for unplanned days in the calendar."""
     client = _get_client()
 
@@ -198,17 +255,25 @@ def suggest_calendar_meals(recipes, unplanned_dates, current_week_plan):
     )
     unplanned_str = "\n".join([f"- {d}" for d in sorted(unplanned_dates)])
 
+    if expiring_ingredients:
+        expiry_lines = "\n".join(
+            [f"- {i['name']}: expires {i['expiry_date']}" for i in expiring_ingredients]
+        )
+        expiry_section = f"\nIngredients expiring soon — prioritize recipes that use these:\n{expiry_lines}\n"
+    else:
+        expiry_section = "\nNo expiry data available — vary choices based on recipe frequency and balance.\n"
+
     prompt = f"""
     I'm planning meals for the week. My saved recipes are:
     {recipe_list}
 
     Already planned:
     {planned_str}
-
+    {expiry_section}
     Please suggest one recipe for each of these unplanned days:
     {unplanned_str}
 
-    Choose from my saved recipes only. Vary the choices — avoid repeating the same recipe on consecutive days if possible.
+    Choose from my saved recipes only. Vary the choices — avoid repeating the same recipe on consecutive days if possible. Prioritize recipes that use expiring ingredients when possible.
 
     Return ONLY valid JSON with no extra text or markdown, in this exact format:
     {{
@@ -219,7 +284,7 @@ def suggest_calendar_meals(recipes, unplanned_dates, current_week_plan):
     Only include dates from the unplanned list above. Use exact recipe names as listed.
     """
 
-    response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+    response = _generate_with_retry(client,model=MODEL_NAME, contents=prompt)
     return _parse_gemini_json(response.text)
 
 
@@ -264,7 +329,7 @@ def generate_weekly_shopping_list(meal_plan, planned_recipes, fridge_ingredients
     Format clearly with category headers and bullet points.
     """
 
-    response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+    response = _generate_with_retry(client,model=MODEL_NAME, contents=prompt)
     return response.text
 
 
@@ -334,7 +399,7 @@ Return ONLY valid JSON with no extra text or markdown:
 Include all 7 days. Use the exact date strings from the current plan.
 """
 
-    response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+    response = _generate_with_retry(client,model=MODEL_NAME, contents=prompt)
     return _parse_gemini_json(response.text)
 
 
@@ -365,5 +430,5 @@ def generate_shopping_list(recipe, fridge_ingredients):
     Be specific and practical.
     """
 
-    response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+    response = _generate_with_retry(client,model=MODEL_NAME, contents=prompt)
     return response.text

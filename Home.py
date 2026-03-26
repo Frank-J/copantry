@@ -1,6 +1,8 @@
 import streamlit as st
 from datetime import date, timedelta
-from utils import apply_sidebar_style, get_local_date
+from utils import apply_sidebar_style, get_local_date, show_ai_limit_message
+from database import check_and_increment_quota
+from constants import AI_DAILY_LIMIT
 from database import (
     initialize_db,
     get_ingredients,
@@ -13,6 +15,7 @@ from database import (
     get_meal_entries,
     get_shopping_plan,
     save_meal_entry,
+    get_expiring_soon_ingredients,
 )
 
 initialize_db()
@@ -22,6 +25,30 @@ st.set_page_config(page_title="CoPantry · Home", page_icon="🏠", layout="wide
 apply_sidebar_style()
 
 st.title("🏠 Home")
+
+# ---------------------------------------------------------------------------
+# Welcome banner — context for first-time visitors
+# ---------------------------------------------------------------------------
+st.markdown(
+    """
+    <div style="background:#f0f9ff;border-left:4px solid #0ea5e9;padding:14px 18px;
+                border-radius:6px;margin-bottom:8px;color:#1f2937;line-height:1.6;">
+        👋 <strong>Welcome to CoPantry!</strong> A working demo of my personal pantry
+        and meal planning app, pre-loaded with sample data so you can explore every
+        feature. Future versions may open this up to more users. I'd love to hear your thoughts.
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+link_col1, link_col2, link_col3, _ = st.columns([1.8, 1.8, 1.5, 4.2])
+with link_col1:
+    st.page_link("pages/6_Getting_Started.py", label="🚀 New here? Start here")
+with link_col2:
+    st.page_link("pages/8_About.py", label="📖 About this project")
+with link_col3:
+    st.page_link("pages/7_Feedback.py", label="💬 Share feedback")
+
+st.divider()
 
 # ---------------------------------------------------------------------------
 # Load shared data
@@ -109,6 +136,21 @@ def _callout(level, html):
     )
 
 thaw_reminders = []
+expiry_warnings = []
+
+# Build expiry warnings
+for item in get_expiring_soon_ingredients(days=3):
+    expiry = date.fromisoformat(item["expiry_date"])
+    days_left = (expiry - today).days
+    name = _ing(item["name"])
+    if days_left < 0:
+        expiry_warnings.append(("error", f"🗑️ {name} expired {abs(days_left)} day{'s' if abs(days_left) != 1 else ''} ago — check if it's still usable"))
+    elif days_left == 0:
+        expiry_warnings.append(("error", f"⏰ {name} expires today — use it or plan a recipe around it"))
+    elif days_left == 1:
+        expiry_warnings.append(("warning", f"⏰ {name} expires tomorrow — consider cooking with it soon"))
+    else:
+        expiry_warnings.append(("info", f"📅 {name} expires in {days_left} days ({_dt(expiry.strftime('%A, %b %-d'))})"))
 
 # Build freezer ingredient map from pantry
 freezer_items = {i["name"].lower(): i["name"] for i in ingredients if (i.get("location") or "Fridge") == "Freezer"}
@@ -167,10 +209,13 @@ if shop_plan and not shop_plan["fully_covered"]:
     else:
         shopping_reminder = ("info", f"🗓️ Plan to shop by {_dt(shop_by.strftime('%A, %b %-d'))} — {len(shop_plan['items'])} item(s) needed")
 
-has_ahead = thaw_reminders or shopping_reminder
+has_ahead = expiry_warnings or thaw_reminders or shopping_reminder
 if has_ahead:
     st.divider()
     st.markdown("## What to Do Today")
+
+    for level, msg in expiry_warnings:
+        _callout(level, msg)
 
     for reminder in thaw_reminders:
         _callout("info", reminder)
@@ -272,19 +317,24 @@ st.subheader("💡 AI Insight")
 
 if "home_insight" not in st.session_state:
     if not ingredients:
-        st.session_state["home_insight"] = "Add some ingredients to your fridge to get personalised insights."
+        st.session_state["home_insight"] = "Add some ingredients to your pantry to get personalised insights."
     elif not recipes:
-        st.session_state["home_insight"] = "Add some recipes to get personalised insights based on your fridge."
+        st.session_state["home_insight"] = "Add some recipes to get personalised insights based on your pantry."
     else:
-        with st.spinner("Generating insight based on your fridge..."):
-            try:
-                cookable = get_cookable_recipes()
-                forgotten = get_forgotten_ingredients()
-                st.session_state["home_insight"] = generate_home_insight(
-                    ingredients, recipes, cookable, forgotten
-                )
-            except Exception as e:
-                st.session_state["home_insight"] = f"Could not generate insight: {e}"
+        if not check_and_increment_quota(AI_DAILY_LIMIT):
+            st.session_state["home_insight"] = (
+                "⚠️ **Daily AI limit reached.** Insights will be available again tomorrow."
+            )
+        else:
+            with st.spinner("Generating insight based on your pantry..."):
+                try:
+                    cookable = get_cookable_recipes()
+                    forgotten = get_forgotten_ingredients()
+                    st.session_state["home_insight"] = generate_home_insight(
+                        ingredients, recipes, cookable, forgotten
+                    )
+                except Exception as e:
+                    st.session_state["home_insight"] = f"Could not generate insight: {e}"
 
 st.markdown(st.session_state["home_insight"])
 

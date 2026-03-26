@@ -1,3 +1,5 @@
+AI_DAILY_LIMIT = 50
+
 UNITS = [
     # Whole items
     "whole",

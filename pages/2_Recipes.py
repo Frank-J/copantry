@@ -1,5 +1,7 @@
 import streamlit as st
-from utils import apply_sidebar_style
+from utils import apply_sidebar_style, show_ai_limit_message
+from database import check_and_increment_quota
+from constants import AI_DAILY_LIMIT
 from database import get_recipes, add_recipe, update_recipe, delete_recipe, log_recipe_cooked, deduct_recipe_ingredients, get_recipe_pantry_status
 from gemini_client import extract_recipe_from_images, extract_recipe_from_pdf
 from constants import UNITS
@@ -12,7 +14,7 @@ st.title("📖 Recipes")
 st.divider()
 
 # Add recipe section
-tab1, tab2 = st.tabs(["📷 Add via Photo or PDF", "✏️ Add Manually"])
+tab1, tab2, tab3 = st.tabs(["📷 Upload Photo or PDF", "📸 Use Webcam", "✏️ Add Manually"])
 
 with tab1:
     st.subheader("Upload a Recipe Photo or PDF")
@@ -43,89 +45,185 @@ with tab1:
                 else:
                     st.markdown(f"📄 **{f.name}** ready to extract.")
 
-            if st.button("Extract Recipe with AI", use_container_width=True):
-                with st.spinner("Analysing your recipe..."):
-                    try:
-                        if is_pdf:
-                            result = extract_recipe_from_pdf(uploaded_files[0].getvalue())
-                        else:
-                            result = extract_recipe_from_images([f.getvalue() for f in uploaded_files])
-                        st.session_state["extracted_recipe"] = result
-                    except Exception as e:
-                        st.error(f"Could not extract recipe: {e}")
-
-    if "extracted_recipe" in st.session_state:
-        recipe = st.session_state["extracted_recipe"]
-        st.success("Recipe extracted! Review and complete any missing fields before saving.")
-
-        with st.form("save_extracted_recipe"):
-            name = st.text_input("Recipe Name", value=recipe.get("name", ""))
-            cooking_time = st.text_input("Cooking Time", value=recipe.get("cooking_time", ""))
-            instructions = st.text_area("Instructions", value=recipe.get("instructions", ""), height=150)
-
-            st.markdown("**Ingredients** — fill in any fields marked with ⚠️")
-            st.caption("Name · Amount · Unit")
-
-            extracted_ingredients = recipe.get("ingredients", [])
-            edited_ingredients = []
-
-            for i, ing in enumerate(extracted_ingredients):
-                col1, col2, col3 = st.columns([3, 2, 2])
-
-                missing_amount = ing.get("amount") is None
-                missing_unit = ing.get("unit") is None or ing.get("unit") not in UNITS
-
-                with col1:
-                    ing_name = st.text_input(
-                        "Name",
-                        value=ing.get("name", ""),
-                        key=f"ing_name_{i}",
-                        label_visibility="collapsed",
-                    )
-                with col2:
-                    ing_amount = st.number_input(
-                        "⚠️ Amount needed" if missing_amount else "Amount",
-                        min_value=0.0,
-                        value=float(ing.get("amount") or 0.0),
-                        step=0.5,
-                        key=f"ing_amount_{i}",
-                        label_visibility="visible" if missing_amount else "collapsed",
-                    )
-                with col3:
-                    ing_unit = st.selectbox(
-                        "⚠️ Unit needed" if missing_unit else "Unit",
-                        UNITS,
-                        index=0 if missing_unit else UNITS.index(ing.get("unit")),
-                        key=f"ing_unit_{i}",
-                        label_visibility="visible" if missing_unit else "collapsed",
-                    )
-
-                edited_ingredients.append({
-                    "name": ing_name,
-                    "amount": ing_amount,
-                    "unit": ing_unit,
-                })
-
-            if st.form_submit_button("Save Recipe", use_container_width=True):
-                errors = []
-                if not name.strip():
-                    errors.append("Recipe name is required.")
-                for j, ing in enumerate(edited_ingredients):
-                    if not ing["name"].strip():
-                        errors.append(f"Ingredient {j + 1} is missing a name.")
-                    if ing["amount"] <= 0:
-                        errors.append(f"'{ing['name']}' needs an amount greater than 0.")
-
-                if errors:
-                    for err in errors:
-                        st.error(err)
+            if st.button("Extract Recipe with AI", key="extract_upload", use_container_width=True):
+                if not check_and_increment_quota(AI_DAILY_LIMIT):
+                    show_ai_limit_message()
                 else:
-                    add_recipe(name, cooking_time, edited_ingredients, instructions)
-                    del st.session_state["extracted_recipe"]
-                    st.success(f"'{name}' saved!")
-                    st.rerun()
+                    with st.spinner("Analyzing your recipe..."):
+                        try:
+                            if is_pdf:
+                                result = extract_recipe_from_pdf(uploaded_files[0].getvalue())
+                            else:
+                                result = extract_recipe_from_images([f.getvalue() for f in uploaded_files])
+                            st.session_state["extracted_recipe"] = result
+                        except Exception as e:
+                            st.error(f"Could not extract recipe: {e}")
 
 with tab2:
+    st.subheader("Take a Photo with Your Webcam")
+    st.markdown("Point your webcam at a recipe card or printed recipe. AI will extract the details automatically.")
+    st.info(
+        "**Best for:** physical recipe cards, cookbook pages, printed recipes. "
+        "For cards with a front and back, capture the front first, then add the back."
+    )
+    st.caption("For best results: use good lighting, hold the card steady, and fill the frame with the recipe.")
+
+    if "webcam_active" not in st.session_state:
+        st.session_state["webcam_active"] = False
+    if "webcam_photos" not in st.session_state:
+        st.session_state["webcam_photos"] = []
+
+    # Step 1: Start button (no photos yet)
+    if not st.session_state["webcam_active"] and not st.session_state["webcam_photos"]:
+        if st.button("📸 Start Webcam", use_container_width=True):
+            st.session_state["webcam_active"] = True
+            st.rerun()
+
+    # Step 2: Live camera — closes as soon as a photo is taken
+    if st.session_state.get("webcam_active"):
+        side = "back" if len(st.session_state["webcam_photos"]) == 1 else "front"
+        st.caption(f"Taking photo of: **{side} of card**")
+        camera_photo = st.camera_input("Take a photo", label_visibility="collapsed")
+        if camera_photo:
+            st.session_state["webcam_photos"].append(camera_photo.getvalue())
+            st.session_state["webcam_active"] = False
+            st.rerun()
+
+    # Step 3: Review captured photos
+    if st.session_state["webcam_photos"] and not st.session_state.get("webcam_active"):
+        photos = st.session_state["webcam_photos"]
+
+        if len(photos) == 1:
+            st.image(photos[0], caption="Front", use_container_width=True)
+            col_retake, col_add_back, col_extract = st.columns(3)
+            with col_retake:
+                if st.button("🔄 Retake", use_container_width=True, key="retake_front"):
+                    st.session_state["webcam_photos"] = []
+                    st.session_state["webcam_active"] = True
+                    st.rerun()
+            with col_add_back:
+                if st.button("➕ Add Back of Card", use_container_width=True, key="add_back"):
+                    st.session_state["webcam_active"] = True
+                    st.rerun()
+            with col_extract:
+                if st.button("Extract Recipe with AI", key="extract_webcam_1", use_container_width=True):
+                    if not check_and_increment_quota(AI_DAILY_LIMIT):
+                        show_ai_limit_message()
+                    else:
+                        with st.spinner("Analyzing your recipe..."):
+                            try:
+                                result = extract_recipe_from_images(photos)
+                                st.session_state["extracted_recipe"] = result
+                                st.session_state["webcam_photos"] = []
+                            except Exception as e:
+                                st.error(f"Could not extract recipe: {e}")
+
+        elif len(photos) == 2:
+            col_front, col_back = st.columns(2)
+            with col_front:
+                st.image(photos[0], caption="Front", use_container_width=True)
+            with col_back:
+                st.image(photos[1], caption="Back", use_container_width=True)
+            col_retake_back, col_extract2 = st.columns(2)
+            with col_retake_back:
+                if st.button("🔄 Retake Back", use_container_width=True, key="retake_back"):
+                    st.session_state["webcam_photos"] = photos[:1]
+                    st.session_state["webcam_active"] = True
+                    st.rerun()
+            with col_extract2:
+                if st.button("Extract Recipe with AI", key="extract_webcam_2", use_container_width=True):
+                    if not check_and_increment_quota(AI_DAILY_LIMIT):
+                        show_ai_limit_message()
+                    else:
+                        with st.spinner("Analyzing your recipe..."):
+                            try:
+                                result = extract_recipe_from_images(photos)
+                                st.session_state["extracted_recipe"] = result
+                                st.session_state["webcam_photos"] = []
+                            except Exception as e:
+                                st.error(f"Could not extract recipe: {e}")
+
+# Extracted recipe review form — shown after either upload or webcam extraction
+if "extracted_recipe" in st.session_state:
+    recipe = st.session_state["extracted_recipe"]
+    st.divider()
+    st.success("Recipe extracted! Review and complete any missing fields before saving.")
+
+    with st.form("save_extracted_recipe"):
+        name = st.text_input("Recipe Name", value=recipe.get("name", ""))
+        cooking_time = st.text_input("Cooking Time", value=recipe.get("cooking_time", ""))
+        instructions = st.text_area("Instructions", value=recipe.get("instructions", ""), height=150)
+
+        st.markdown("**Ingredients** — review fields marked with ⚠️")
+        st.caption("Name · Amount · Unit")
+
+        extracted_ingredients = recipe.get("ingredients", [])
+        edited_ingredients = []
+
+        for i, ing in enumerate(extracted_ingredients):
+            col1, col2, col3, col_flag = st.columns([3, 2, 2, 0.4])
+
+            missing_amount = ing.get("amount") is None
+            missing_unit = ing.get("unit") is None or ing.get("unit") not in UNITS
+
+            with col1:
+                ing_name = st.text_input(
+                    "Name",
+                    value=ing.get("name", ""),
+                    key=f"ing_name_{i}",
+                    label_visibility="collapsed",
+                )
+            with col2:
+                ing_amount = st.number_input(
+                    "Amount",
+                    min_value=0.0,
+                    value=float(ing.get("amount") or 0.0),
+                    step=0.5,
+                    key=f"ing_amount_{i}",
+                    label_visibility="collapsed",
+                )
+            with col3:
+                ing_unit = st.selectbox(
+                    "Unit",
+                    UNITS,
+                    index=0 if missing_unit else UNITS.index(ing.get("unit")),
+                    key=f"ing_unit_{i}",
+                    label_visibility="collapsed",
+                )
+            with col_flag:
+                st.markdown("<div style='padding-top:6px'>", unsafe_allow_html=True)
+                if missing_amount or missing_unit:
+                    st.markdown("⚠️")
+                else:
+                    st.markdown("✅")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            edited_ingredients.append({
+                "name": ing_name,
+                "amount": ing_amount,
+                "unit": ing_unit,
+            })
+
+        if st.form_submit_button("Save Recipe", use_container_width=True):
+            errors = []
+            if not name.strip():
+                errors.append("Recipe name is required.")
+            for j, ing in enumerate(edited_ingredients):
+                if not ing["name"].strip():
+                    errors.append(f"Ingredient {j + 1} is missing a name.")
+                if ing["amount"] <= 0:
+                    errors.append(f"'{ing['name']}' needs an amount greater than 0.")
+
+            if errors:
+                for err in errors:
+                    st.error(err)
+            else:
+                add_recipe(name, cooking_time, edited_ingredients, instructions)
+                del st.session_state["extracted_recipe"]
+                st.success(f"'{name}' saved!")
+                st.rerun()
+
+with tab3:
     st.subheader("Add Recipe Manually")
     with st.form("manual_recipe_form", clear_on_submit=True):
         name = st.text_input("Recipe Name")

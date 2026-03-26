@@ -8,9 +8,12 @@ from database import (
     get_meal_entries,
     save_meal_entry,
     get_shopping_plan,
+    get_expiring_soon_ingredients,
 )
 from gemini_client import suggest_calendar_meals, reschedule_around_grocery_date
-from utils import apply_sidebar_style, get_local_date
+from utils import apply_sidebar_style, get_local_date, show_ai_limit_message
+from database import check_and_increment_quota
+from constants import AI_DAILY_LIMIT
 
 initialize_db()
 
@@ -237,52 +240,55 @@ else:
                 )
 
             if reschedule_clicked:
-                current_meal_plan = {}
-                for d in week_dates:
-                    date_str = d.isoformat()
-                    day_meals = {}
-                    for mt in MEAL_TYPES:
-                        val = st.session_state.get(f"meal_{date_str}_{mt}", UNPLANNED)
-                        if val != UNPLANNED:
-                            day_meals[mt] = val
-                    if day_meals:
-                        current_meal_plan[date_str] = day_meals
+                if not check_and_increment_quota(AI_DAILY_LIMIT):
+                    show_ai_limit_message()
+                else:
+                    current_meal_plan = {}
+                    for d in week_dates:
+                        date_str = d.isoformat()
+                        day_meals = {}
+                        for mt in MEAL_TYPES:
+                            val = st.session_state.get(f"meal_{date_str}_{mt}", UNPLANNED)
+                            if val != UNPLANNED:
+                                day_meals[mt] = val
+                        if day_meals:
+                            current_meal_plan[date_str] = day_meals
 
-                pantry = get_ingredients()
-                with st.spinner("Reworking your meal plan around your grocery date..."):
-                    try:
-                        result = reschedule_around_grocery_date(
-                            current_meal_plan,
-                            recipes,
-                            pantry,
-                            alt_date.isoformat(),
-                        )
-                        new_plan = result.get("plan", {})
-                        feasible = result.get("feasible", True)
-                        note = result.get("note", "")
-
-                        # Apply new plan to session state and DB
-                        for date_str, meals in new_plan.items():
-                            for mt, meal_name in meals.items():
-                                if meal_name in all_options:
-                                    sk = f"meal_{date_str}_{mt}"
-                                    st.session_state[sk] = meal_name
-                                    save_meal_entry(date_str, mt, meal_name)
-
-                        if not feasible:
-                            st.error(
-                                f"⚠️ {note}\n\nSome meals before your grocery date couldn't be covered "
-                                f"from your current pantry. Consider urgently picking up a few essentials: "
-                                f"{', '.join(item['name'] for item in plan['items'][:5])}."
+                    pantry = get_ingredients()
+                    with st.spinner("Reworking your meal plan around your grocery date..."):
+                        try:
+                            result = reschedule_around_grocery_date(
+                                current_meal_plan,
+                                recipes,
+                                pantry,
+                                alt_date.isoformat(),
                             )
-                        else:
-                            if note:
-                                st.success(f"✅ Meal plan rescheduled. {note}")
+                            new_plan = result.get("plan", {})
+                            feasible = result.get("feasible", True)
+                            note = result.get("note", "")
+
+                            # Apply new plan to session state and DB
+                            for date_str, meals in new_plan.items():
+                                for mt, meal_name in meals.items():
+                                    if meal_name in all_options:
+                                        sk = f"meal_{date_str}_{mt}"
+                                        st.session_state[sk] = meal_name
+                                        save_meal_entry(date_str, mt, meal_name)
+
+                            if not feasible:
+                                st.error(
+                                    f"⚠️ {note}\n\nSome meals before your grocery date couldn't be covered "
+                                    f"from your current pantry. Consider urgently picking up a few essentials: "
+                                    f"{', '.join(item['name'] for item in plan['items'][:5])}."
+                                )
                             else:
-                                st.success("✅ Meal plan rescheduled around your grocery date.")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Could not reschedule: {e}")
+                                if note:
+                                    st.success(f"✅ Meal plan rescheduled. {note}")
+                                else:
+                                    st.success("✅ Meal plan rescheduled around your grocery date.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Could not reschedule: {e}")
 
     st.divider()
 
@@ -301,30 +307,34 @@ else:
 
     with col_ai:
         if st.button("✨ Fill Unplanned Days with AI", use_container_width=True):
-            unplanned_dates = []
-            for d in week_dates:
-                date_str = d.isoformat()
-                all_unplanned = all(
-                    st.session_state.get(f"meal_{date_str}_{mt}", UNPLANNED) == UNPLANNED
-                    for mt in MEAL_TYPES
-                )
-                if all_unplanned:
-                    unplanned_dates.append(date_str)
-
-            if not unplanned_dates:
-                st.info("No fully unplanned days — all days have at least one meal or status assigned.")
+            if not check_and_increment_quota(AI_DAILY_LIMIT):
+                show_ai_limit_message()
             else:
-                with st.spinner("Suggesting meals for unplanned days..."):
-                    try:
-                        suggestions = suggest_calendar_meals(recipes, unplanned_dates, day_primary_map)
-                        for date_str, recipe_name in suggestions.items():
-                            if recipe_name in recipe_names:
-                                sk = f"meal_{date_str}_Dinner"
-                                st.session_state[sk] = recipe_name
-                                save_meal_entry(date_str, "Dinner", recipe_name)
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Could not suggest meals: {e}")
+                unplanned_dates = []
+                for d in week_dates:
+                    date_str = d.isoformat()
+                    all_unplanned = all(
+                        st.session_state.get(f"meal_{date_str}_{mt}", UNPLANNED) == UNPLANNED
+                        for mt in MEAL_TYPES
+                    )
+                    if all_unplanned:
+                        unplanned_dates.append(date_str)
+
+                if not unplanned_dates:
+                    st.info("No fully unplanned days — all days have at least one meal or status assigned.")
+                else:
+                    with st.spinner("Suggesting meals for unplanned days..."):
+                        try:
+                            expiring = get_expiring_soon_ingredients(days=7)
+                            suggestions = suggest_calendar_meals(recipes, unplanned_dates, day_primary_map, expiring_ingredients=expiring or None)
+                            for date_str, recipe_name in suggestions.items():
+                                if recipe_name in recipe_names:
+                                    sk = f"meal_{date_str}_Dinner"
+                                    st.session_state[sk] = recipe_name
+                                    save_meal_entry(date_str, "Dinner", recipe_name)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Could not suggest meals: {e}")
 
     with col_shop:
         st.page_link("pages/5_Shopping_List.py", label="🛒 View Shopping List →")

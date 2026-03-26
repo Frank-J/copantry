@@ -100,6 +100,13 @@ def initialize_db():
         )
     """)
 
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS ai_usage (
+            date TEXT PRIMARY KEY,
+            call_count INTEGER NOT NULL DEFAULT 0
+        )
+    """)
+
     # Seed sample data only if tables are empty
     now = datetime.now()
     ago = lambda days: (now - timedelta(days=days)).isoformat()
@@ -351,19 +358,26 @@ def initialize_db():
     except sqlite3.OperationalError:
         pass  # column already exists
 
+    # Migrate: add expiry_date column if it doesn't exist yet
+    try:
+        c.execute("ALTER TABLE ingredients ADD COLUMN expiry_date TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
     conn.commit()
     conn.close()
 
 
 # Ingredient operations
 
-def add_ingredient(name, amount, unit, location="Fridge"):
+def add_ingredient(name, amount, unit, location="Fridge", expiry_date=None):
+    name = name.strip().title()
     conn = get_connection()
     c = conn.cursor()
     now = datetime.now().isoformat()
     c.execute(
-        "INSERT INTO ingredients (name, amount, unit, added_date, updated_date, location) VALUES (?, ?, ?, ?, ?, ?)",
-        (name, amount, unit, now, now, location),
+        "INSERT INTO ingredients (name, amount, unit, added_date, updated_date, location, expiry_date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (name, amount, unit, now, now, location, expiry_date),
     )
     conn.commit()
     conn.close()
@@ -372,7 +386,7 @@ def add_ingredient(name, amount, unit, location="Fridge"):
 def get_ingredients():
     conn = get_connection()
     c = conn.cursor()
-    c.execute("SELECT id, name, amount, unit, added_date, updated_date, location FROM ingredients ORDER BY name")
+    c.execute("SELECT id, name, amount, unit, added_date, updated_date, location, expiry_date FROM ingredients ORDER BY name")
     rows = c.fetchall()
     conn.close()
     return [
@@ -384,9 +398,25 @@ def get_ingredients():
             "added_date": r[4],
             "updated_date": r[5],
             "location": r[6] if r[6] else "Fridge",
+            "expiry_date": r[7],
         }
         for r in rows
     ]
+
+
+def get_ingredient_by_name(name):
+    """Return the first ingredient matching name (case-insensitive), or None."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute(
+        "SELECT id, name, amount, unit, location FROM ingredients WHERE LOWER(name) = LOWER(?)",
+        (name,),
+    )
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return {"id": row[0], "name": row[1], "amount": row[2], "unit": row[3], "location": row[4]}
+    return None
 
 
 def delete_ingredient(ingredient_id):
@@ -397,12 +427,20 @@ def delete_ingredient(ingredient_id):
     conn.close()
 
 
-def update_ingredient(ingredient_id, amount, location):
+def clear_all_ingredients():
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM ingredients")
+    conn.commit()
+    conn.close()
+
+
+def update_ingredient(ingredient_id, amount, location, expiry_date=None):
     conn = get_connection()
     c = conn.cursor()
     c.execute(
-        "UPDATE ingredients SET amount = ?, location = ?, updated_date = ? WHERE id = ?",
-        (amount, location, datetime.now().isoformat(), ingredient_id),
+        "UPDATE ingredients SET amount = ?, location = ?, expiry_date = ?, updated_date = ? WHERE id = ?",
+        (amount, location, expiry_date, datetime.now().isoformat(), ingredient_id),
     )
     conn.commit()
     conn.close()
@@ -675,6 +713,26 @@ def get_shopping_plan(meal_plan, recipes):
     return {"fully_covered": False, "shop_by": shop_by, "items": shortages}
 
 
+def get_expiring_soon_ingredients(days=3):
+    """Return ingredients with expiry_date set that expire within `days` days (including already expired)."""
+    conn = get_connection()
+    c = conn.cursor()
+    threshold = (date.today() + timedelta(days=days)).isoformat()
+    c.execute(
+        """SELECT id, name, amount, unit, location, expiry_date
+           FROM ingredients
+           WHERE expiry_date IS NOT NULL AND expiry_date <= ?
+           ORDER BY expiry_date ASC""",
+        (threshold,),
+    )
+    rows = c.fetchall()
+    conn.close()
+    return [
+        {"id": r[0], "name": r[1], "amount": r[2], "unit": r[3], "location": r[4], "expiry_date": r[5]}
+        for r in rows
+    ]
+
+
 def get_forgotten_ingredients():
     """Return fridge ingredients not used in any saved recipe."""
     fridge = get_ingredients()
@@ -833,3 +891,36 @@ def clear_checked_shopping_items():
     c.execute("DELETE FROM shopping_list_items WHERE checked = 1")
     conn.commit()
     conn.close()
+
+
+# AI quota operations
+
+def get_ai_usage_today():
+    """Return the number of AI calls made today."""
+    conn = get_connection()
+    c = conn.cursor()
+    today = date.today().isoformat()
+    c.execute("SELECT call_count FROM ai_usage WHERE date = ?", (today,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else 0
+
+
+def check_and_increment_quota(limit=50):
+    """Atomically check quota and increment if available. Returns True if the call is allowed."""
+    conn = get_connection()
+    c = conn.cursor()
+    today = date.today().isoformat()
+    c.execute("SELECT call_count FROM ai_usage WHERE date = ?", (today,))
+    row = c.fetchone()
+    current = row[0] if row else 0
+    if current >= limit:
+        conn.close()
+        return False
+    if row:
+        c.execute("UPDATE ai_usage SET call_count = call_count + 1 WHERE date = ?", (today,))
+    else:
+        c.execute("INSERT INTO ai_usage (date, call_count) VALUES (?, 1)", (today,))
+    conn.commit()
+    conn.close()
+    return True

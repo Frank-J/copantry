@@ -10,7 +10,7 @@ st.markdown("Your feedback helps improve this app. It takes about 2 minutes.")
 st.divider()
 
 st.markdown("""
-Whether you found something confusing, something you loved, or something you'd change —
+Whether you found something confusing, something you loved, or something you'd change,
 I'd genuinely like to hear it. This app was built to solve a real problem, and real feedback
 is the best way to make it better.
 """)

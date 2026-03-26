@@ -12,18 +12,18 @@ st.set_page_config(
 apply_sidebar_style()
 
 st.title("🍳 CoPantry")
-st.markdown("*Your co-pilot for the cooking loop — shop, store, cook, repeat.*")
+st.markdown("*Your co-pilot for the cooking loop: shop, store, cook, repeat.*")
 
 st.divider()
 
 st.markdown("""
 ## The Problem
 
-When I first moved to Seattle to start living and working on my own, I began buying groceries and cooking for myself for the first time. I quickly ran into a recurring frustration: recipes often called for only a small portion of what I had purchased — one tablespoon of cornstarch, half a head of lettuce, a splash of fish sauce. The rest would sit in the fridge, get forgotten, and eventually go to waste.
+When I first moved to Seattle to start living and working on my own, I began buying groceries and cooking for myself for the first time. I quickly ran into a recurring frustration: recipes often called for only a small portion of what I had purchased. One tablespoon of cornstarch, half a head of lettuce, a splash of fish sauce. The rest would sit in the fridge, get forgotten, and eventually go to waste.
 
-Over time, I switched to **HelloFresh** to solve this. Ingredients come pre-measured, portioned exactly for each recipe — no leftovers, no waste, no guesswork. It worked, but it came at a cost. Buying and cooking with your own groceries is significantly more affordable, and I wanted to get back to that without the waste and disorganization that came with it.
+Over time, I switched to **HelloFresh** to solve this. Ingredients come pre-measured, portioned exactly for each recipe, with no leftovers, no waste, and no guesswork. It worked, but it came at a cost. Buying and cooking with your own groceries is significantly more affordable, and I wanted to get back to that without the waste and disorganization that came with it.
 
-What I needed was something that could act as both an **inventory system** and a **cooking advisor** — something that knew what I had, helped me use it efficiently, and guided me toward meals I could actually make.
+What I needed was something that could act as both an **inventory system** and a **cooking advisor**: something that knew what I had, helped me use it efficiently, and guided me toward meals I could actually make.
 
 ## The Solution
 
