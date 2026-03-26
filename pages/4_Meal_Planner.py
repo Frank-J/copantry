@@ -55,13 +55,13 @@ else:
 
     col_prev, col_title, col_next = st.columns([1, 5, 1])
     with col_prev:
-        if st.button("← Prev", use_container_width=True):
+        if st.button("← Prev", width="stretch"):
             st.session_state["week_offset"] -= 1
             st.rerun()
     with col_title:
         st.markdown(f"### {week_label}")
     with col_next:
-        if st.button("Next →", use_container_width=True):
+        if st.button("Next →", width="stretch"):
             st.session_state["week_offset"] += 1
             st.rerun()
 
@@ -235,7 +235,7 @@ else:
             with col_btn:
                 reschedule_clicked = st.button(
                     "✨ Reschedule with AI",
-                    use_container_width=True,
+                    width="stretch",
                     key="reschedule_btn",
                 )
 
@@ -306,7 +306,7 @@ else:
     col_ai, col_shop = st.columns(2)
 
     with col_ai:
-        if st.button("✨ Fill Unplanned Days with AI", use_container_width=True):
+        if st.button("✨ Fill Unplanned Days with AI", width="stretch"):
             if not check_and_increment_quota(AI_DAILY_LIMIT):
                 show_ai_limit_message()
             else:

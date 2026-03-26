@@ -103,7 +103,7 @@ with st.form("add_item_form", clear_on_submit=True):
     with col_input:
         new_item = st.text_input("Item", placeholder="e.g. Paper towels", label_visibility="collapsed")
     with col_btn:
-        add_submitted = st.form_submit_button("Add", use_container_width=True)
+        add_submitted = st.form_submit_button("Add", width="stretch")
     if add_submitted and new_item.strip():
         add_shopping_list_item(new_item.strip())
         st.rerun()

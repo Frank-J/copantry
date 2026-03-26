@@ -18,7 +18,7 @@ is the best way to make it better.
 st.link_button(
     "Open Feedback Form →",
     url="https://forms.gle/wK3Yfhkee9kcvmjf7",
-    use_container_width=True,
+    width="stretch",
     type="primary",
 )
 

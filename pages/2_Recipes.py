@@ -41,11 +41,11 @@ with tab1:
         else:
             for f in uploaded_files:
                 if not f.name.lower().endswith(".pdf"):
-                    st.image(f, caption=f.name, use_container_width=True)
+                    st.image(f, caption=f.name, width="stretch")
                 else:
                     st.markdown(f"📄 **{f.name}** ready to extract.")
 
-            if st.button("Extract Recipe with AI", key="extract_upload", use_container_width=True):
+            if st.button("Extract Recipe with AI", key="extract_upload", width="stretch"):
                 if not check_and_increment_quota(AI_DAILY_LIMIT):
                     show_ai_limit_message()
                 else:
@@ -72,7 +72,7 @@ with tab2:
 
     # Step 1: Start button (no photos yet)
     if not st.session_state["webcam_active"] and not st.session_state["webcam_photos"]:
-        if st.button("📸 Start Webcam", use_container_width=True):
+        if st.button("📸 Start Webcam", width="stretch"):
             st.session_state["webcam_active"] = True
             st.rerun()
 
@@ -91,19 +91,19 @@ with tab2:
         photos = st.session_state["webcam_photos"]
 
         if len(photos) == 1:
-            st.image(photos[0], caption="Front", use_container_width=True)
+            st.image(photos[0], caption="Front", width="stretch")
             col_retake, col_add_back, col_extract = st.columns(3)
             with col_retake:
-                if st.button("🔄 Retake", use_container_width=True, key="retake_front"):
+                if st.button("🔄 Retake", width="stretch", key="retake_front"):
                     st.session_state["webcam_photos"] = []
                     st.session_state["webcam_active"] = True
                     st.rerun()
             with col_add_back:
-                if st.button("➕ Add Back of Card", use_container_width=True, key="add_back"):
+                if st.button("➕ Add Back of Card", width="stretch", key="add_back"):
                     st.session_state["webcam_active"] = True
                     st.rerun()
             with col_extract:
-                if st.button("Extract Recipe with AI", key="extract_webcam_1", use_container_width=True):
+                if st.button("Extract Recipe with AI", key="extract_webcam_1", width="stretch"):
                     if not check_and_increment_quota(AI_DAILY_LIMIT):
                         show_ai_limit_message()
                     else:
@@ -118,17 +118,17 @@ with tab2:
         elif len(photos) == 2:
             col_front, col_back = st.columns(2)
             with col_front:
-                st.image(photos[0], caption="Front", use_container_width=True)
+                st.image(photos[0], caption="Front", width="stretch")
             with col_back:
-                st.image(photos[1], caption="Back", use_container_width=True)
+                st.image(photos[1], caption="Back", width="stretch")
             col_retake_back, col_extract2 = st.columns(2)
             with col_retake_back:
-                if st.button("🔄 Retake Back", use_container_width=True, key="retake_back"):
+                if st.button("🔄 Retake Back", width="stretch", key="retake_back"):
                     st.session_state["webcam_photos"] = photos[:1]
                     st.session_state["webcam_active"] = True
                     st.rerun()
             with col_extract2:
-                if st.button("Extract Recipe with AI", key="extract_webcam_2", use_container_width=True):
+                if st.button("Extract Recipe with AI", key="extract_webcam_2", width="stretch"):
                     if not check_and_increment_quota(AI_DAILY_LIMIT):
                         show_ai_limit_message()
                     else:
@@ -201,7 +201,7 @@ if "extracted_recipe" in st.session_state:
                 "unit": ing_unit,
             })
 
-        if st.form_submit_button("Save Recipe", use_container_width=True):
+        if st.form_submit_button("Save Recipe", width="stretch"):
             errors = []
             if not name.strip():
                 errors.append("Recipe name is required.")
@@ -235,7 +235,7 @@ with tab3:
             height=120,
         )
 
-        if st.form_submit_button("Save Recipe", use_container_width=True):
+        if st.form_submit_button("Save Recipe", width="stretch"):
             if name.strip():
                 ingredients = []
                 for line in ingredients_text.strip().split("\n"):
@@ -336,9 +336,9 @@ else:
 
                 col_save, col_cancel = st.columns(2)
                 with col_save:
-                    save = st.form_submit_button("Save Changes", use_container_width=True, type="primary")
+                    save = st.form_submit_button("Save Changes", width="stretch", type="primary")
                 with col_cancel:
-                    cancel = st.form_submit_button("Cancel", use_container_width=True)
+                    cancel = st.form_submit_button("Cancel", width="stretch")
 
                 if save:
                     for line in new_ingredients_text.strip().split("\n"):

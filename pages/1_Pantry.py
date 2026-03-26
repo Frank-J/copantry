@@ -113,7 +113,7 @@ def confirm_duplicates():
     st.write("")
     col_combine, col_separate = st.columns(2)
     with col_combine:
-        if st.button("Combine amounts", type="primary", use_container_width=True):
+        if st.button("Combine amounts", type="primary", width="stretch"):
             saved = []
             for row in clean_rows:
                 add_ingredient(row["name"], row["amount"], row["unit"], row["location"], row.get("expiry_date"))
@@ -131,7 +131,7 @@ def confirm_duplicates():
             st.session_state["add_success"] = f"Saved: {', '.join(saved)}"
             st.rerun()
     with col_separate:
-        if st.button("Add as separate entries", use_container_width=True):
+        if st.button("Add as separate entries", width="stretch"):
             saved = []
             for row in clean_rows + [c["new"] for c in conflicts]:
                 add_ingredient(row["name"], row["amount"], row["unit"], row["location"], row.get("expiry_date"))
@@ -146,13 +146,13 @@ def confirm_duplicates():
 # Action row
 btn_add_row, btn_suggest, btn_save, _ = st.columns([1.5, 2, 1.5, 4])
 with btn_add_row:
-    if st.button("+ Add row", use_container_width=True):
+    if st.button("+ Add row", width="stretch"):
         new_id = st.session_state["add_row_counter"]
         st.session_state["add_row_ids"].append(new_id)
         st.session_state["add_row_counter"] += 1
         st.rerun()
 with btn_suggest:
-    if st.button("💡 Suggest Locations", use_container_width=True):
+    if st.button("💡 Suggest Locations", width="stretch"):
         named_rows = [(rid, st.session_state.get(f"r_name_{rid}", "").strip())
                       for rid in row_ids
                       if st.session_state.get(f"r_name_{rid}", "").strip()]
@@ -174,7 +174,7 @@ with btn_suggest:
                 except Exception as e:
                     st.toast(f"Could not get suggestions: {e}", icon="⚠️")
 with btn_save:
-    if st.button("Save to Pantry", type="primary", use_container_width=True):
+    if st.button("Save to Pantry", type="primary", width="stretch"):
         rows_to_save = []
         for rid in st.session_state["add_row_ids"]:
             name = st.session_state.get(f"r_name_{rid}", "").strip()
@@ -225,11 +225,11 @@ def confirm_clear_pantry():
     st.warning("⚠️ This will permanently delete **all ingredients** from your pantry. This cannot be undone.")
     col_confirm, col_cancel = st.columns(2)
     with col_confirm:
-        if st.button("Yes, clear everything", type="primary", use_container_width=True):
+        if st.button("Yes, clear everything", type="primary", width="stretch"):
             clear_all_ingredients()
             st.rerun()
     with col_cancel:
-        if st.button("Cancel", use_container_width=True):
+        if st.button("Cancel", width="stretch"):
             st.rerun()
 
 
@@ -241,7 +241,7 @@ with head_col:
     st.subheader("Current Ingredients")
 with btn_col:
     st.write("")
-    if st.button("🗑️ Clear All", use_container_width=True, type="secondary"):
+    if st.button("🗑️ Clear All", width="stretch", type="secondary"):
         confirm_clear_pantry()
 
 ingredients = get_ingredients()
@@ -344,12 +344,12 @@ else:
                     new_expiry = st.date_input("Expiry date (optional)", value=expiry_value)
                 col_save, col_cancel = st.columns(2)
                 with col_save:
-                    if st.form_submit_button("Save", use_container_width=True):
+                    if st.form_submit_button("Save", width="stretch"):
                         expiry_str = new_expiry.isoformat() if new_expiry else None
                         update_ingredient(ingredient["id"], new_amount, new_location, expiry_str)
                         del st.session_state["editing_id"]
                         st.rerun()
                 with col_cancel:
-                    if st.form_submit_button("Cancel", use_container_width=True):
+                    if st.form_submit_button("Cancel", width="stretch"):
                         del st.session_state["editing_id"]
                         st.rerun()

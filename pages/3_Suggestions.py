@@ -42,7 +42,7 @@ else:
         st.page_link("pages/2_Recipes.py", label="Add a Recipe →")
 
     st.write("")
-    if st.button("Get AI Recipe Suggestions", use_container_width=True, type="primary"):
+    if st.button("Get AI Recipe Suggestions", width="stretch", type="primary"):
         if not check_and_increment_quota(AI_DAILY_LIMIT):
             show_ai_limit_message()
         else:
