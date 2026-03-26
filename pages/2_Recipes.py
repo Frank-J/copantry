@@ -14,11 +14,11 @@ st.title("📖 Recipes")
 st.divider()
 
 # Add recipe section
-tab1, tab2, tab3 = st.tabs(["📷 Upload Photo or PDF", "📸 Use Webcam", "✏️ Add Manually"])
+tab1, tab2, tab3 = st.tabs(["📱 Upload or Take Photo", "💻 Webcam (Laptop)", "✏️ Add Manually"])
 
 with tab1:
     st.subheader("Upload a Recipe Photo or PDF")
-    st.markdown("Upload a photo or PDF and AI will extract the name, ingredients, cooking time, and instructions automatically.")
+    st.markdown("Upload a photo or PDF and AI will extract the details automatically. **On mobile, tap the button below and choose Take Photo** to use your camera at full resolution.")
 
     st.info(
         "**One recipe per upload.** Uploading multiple recipes at once will mix their ingredients together. "
@@ -60,12 +60,9 @@ with tab1:
                             st.error(f"Could not extract recipe: {e}")
 
 with tab2:
-    st.subheader("Take a Photo with Your Webcam")
-    st.markdown("Point your webcam at a recipe card or printed recipe. AI will extract the details automatically.")
-    st.info(
-        "**Best for:** physical recipe cards, cookbook pages, printed recipes. "
-        "For cards with a front and back, capture the front first, then add the back."
-    )
+    st.subheader("Use Your Laptop Webcam")
+    st.markdown("Point your webcam at a physical recipe card or cookbook page. AI will extract the details automatically.")
+    st.info("**On a phone?** Use the **Upload or Take Photo** tab instead — it gives full camera resolution.")
     st.caption("For best results: use good lighting, hold the card steady, and fill the frame with the recipe.")
 
     if "webcam_active" not in st.session_state:
