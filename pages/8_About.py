@@ -39,9 +39,11 @@ The goal is to make home cooking feel as frictionless as a meal kit service, wit
 
 ## How I Built It
 
-This web app was built in under a week as part of my APM application. Rather than starting from a blank editor, I used **Claude Code** — an AI coding assistant — to help design the architecture, write the code, and debug issues in real time.
+The initial version of this app was built in under a week. Rather than starting from a blank editor, I used **Claude Code** — an AI coding assistant — to help design the architecture, write the code, and debug issues in real time.
 
 This wasn't just about moving faster. It was about thinking through product decisions under a real deadline: what features matter most for an MVP, how to handle data storage for both personal and demo use cases, and how to deploy something shareable quickly. Claude Code acted as a technical collaborator, letting me stay focused on the product thinking while it helped with implementation.
+
+Since that initial build, I've continued iterating as I use the app day to day — adding features, fixing real friction points, and exploring new ideas. The changelog below tracks the full history.
 
 **Tech stack:** Python · Streamlit · Google Gemini AI · SQLite · Deployed on Streamlit Community Cloud
 
@@ -86,10 +88,16 @@ The Home dashboard generates an AI insight on first load. Rather than regenerati
 **Quantity-aware ingredient tracking**
 The first version of cookability checking only looked at ingredient names — if "eggs" were in the pantry, the recipe was considered makeable regardless of how many were left. I replaced this with real quantity math: the app now converts between compatible units (grams ↔ oz, cups ↔ ml, etc.) and checks whether you actually have enough. Marking a recipe as cooked automatically deducts the exact amounts used. The meal planner's shopping plan projects this depletion day by day and tells you the specific date you need to shop and exactly what to buy.
 
+**AI cost management**
+Running AI features on a publicly accessible app means API costs are shared across all visitors. Rather than leaving this uncapped, I added a global daily quota tracked in SQLite. When the limit is reached, users see a clear explanation of why the feature is unavailable and when it resets. This reflects a real product trade-off: balancing feature availability against operational cost, with transparency to the user rather than a silent failure.
+
+**Multiple input methods for recipe capture**
+Adding a recipe should work however is most natural in the moment. The Recipes page supports three paths: uploading a photo or PDF (best for mobile, where the file picker offers a native Take Photo option at full camera resolution), a live webcam feed (better for laptop use with physical recipe cards), and manual entry. Each method feeds into the same AI extraction and review flow.
+
 ## What I'd Build Next
 
-1. **Native mobile app** — the biggest friction point right now is updating the pantry on the go: you've just bought groceries, you're standing in the kitchen, and opening a web app on a laptop is an extra step. A mobile-first version with a quick-add flow, receipt scanning, and barcode scanning for pantry items would make the experience seamless in everyday use
-2. **Expiry date tracking** — alert when ingredients are approaching their use-by date to further reduce waste
+1. **Native mobile app** — the biggest friction point right now is updating the pantry on the go: you've just bought groceries, you're standing in the kitchen, and opening a web app on a laptop is an extra step. A mobile-first version with a quick-add flow and barcode scanning for pantry items would make the experience seamless in everyday use
+2. **Receipt scanning** — upload or photograph a grocery receipt and have it automatically add items to the pantry. Particularly useful for delivery orders where a PDF receipt is available
 3. **Nutritional information** — surface calorie and macro data alongside recipes
 4. **Grocery delivery integration** — connect the shopping list directly to Instacart or Amazon Fresh for one-click ordering
 """)
@@ -100,6 +108,8 @@ with st.expander("📋 Changelog"):
     st.markdown("""
 | Version | Changes |
 |---|---|
+| v13 | Global daily AI quota with sidebar counter and user-facing messaging; expiry date tracking with color-coded urgency on Pantry and Home; pantry multi-row add with bulk AI location suggestions and duplicate detection; webcam recipe capture (laptop) with front and back support; Gemini 503 retry logic |
+| v12 | Home reordered as landing page; expanded seed data; eating-out quick actions on Home; grocery trip recommendation on Meal Planner; AI-powered meal reschedule around a chosen grocery date |
 | v11 | Rebranded to CoPantry; fixed "fridge" references to "pantry" across all pages; underlined content links; updated Getting Started with clickable page links |
 | v10 | Ingredient location tagging (Fridge/Freezer/Pantry/Other); breakfast/lunch/dinner meal planning; persistent meal plan saved to database; Home page redesigned as daily morning briefing with today's meals, thaw reminders, and shopping deadlines |
 | v9 | Renamed Fridge to Pantry to better reflect full ingredient inventory; AI-generated per-ingredient storage tips; date added and last updated tracking; column headers on ingredient table |

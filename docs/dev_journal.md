@@ -267,6 +267,34 @@ Files updated:
 - Meal Planner: fixed indentation bug in the reschedule block introduced during an earlier edit
 - Inline date picker added under Home's "Today" heading so users can correct for timezone differences
 
+### Webcam Recipe Capture
+
+Added a third tab to the Recipes page for capturing recipe cards via webcam, alongside the existing upload and manual entry options.
+
+**Flow:**
+- "Start Webcam" button activates the camera (does not activate on page load)
+- Camera closes automatically as soon as a photo is taken
+- User can retake or proceed to extract
+- Front + back support: after the first photo, user can add a second shot for the back of a recipe card, with both displayed side by side before extraction
+- Same Gemini extraction flow as the upload tab
+
+**Retry logic:**
+- Added `_generate_with_retry()` in `gemini_client.py`: retries up to 3 times with a 3-second pause on 503 UNAVAILABLE errors from the Gemini API, applied to all AI calls in the file
+
+**Bug fix:**
+- Initial retry implementation accidentally replaced the internal `client.models.generate_content()` call inside the retry function itself, causing infinite recursion. Fixed by restoring the direct client call inside the function.
+
+**Tab label clarification:**
+- Tabs renamed to make audience immediately clear without reading descriptions:
+  - "📱 Upload or Take Photo" — works for all devices; on mobile the file picker offers Take Photo at full native camera resolution
+  - "💻 Webcam (Laptop)" — signals this is for laptop use only
+  - "✏️ Add Manually"
+- Ingredient review form moved outside the tabs so it renders correctly after either upload or webcam extraction
+
+**Other recipe page fixes:**
+- "Analysing" corrected to "Analyzing"
+- Ingredient rows with missing amount/unit now show a ⚠️/✅ indicator in a narrow side column instead of a visible label that caused row misalignment
+
 ---
 
 *Last updated: 2026-03-26*
