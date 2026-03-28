@@ -107,12 +107,28 @@ def initialize_db():
         )
     """)
 
-    # Seed sample data only if tables are empty
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    """)
+
     now = datetime.now()
     ago = lambda days: (now - timedelta(days=days)).isoformat()
 
-    c.execute("SELECT COUNT(*) FROM ingredients")
-    if c.fetchone()[0] == 0:
+    c.execute("SELECT value FROM settings WHERE key = 'seeded'")
+    already_seeded = c.fetchone() is not None
+
+    # If the settings table was just created but data already exists (existing deployment),
+    # mark as seeded without re-inserting to avoid duplicates
+    if not already_seeded:
+        c.execute("SELECT COUNT(*) FROM ingredients")
+        if c.fetchone()[0] > 0:
+            c.execute("INSERT INTO settings (key, value) VALUES ('seeded', 'true')")
+            already_seeded = True
+
+    if not already_seeded:
         sample_ingredients = [
             # Core fridge items
             ("Eggs", 12, "whole", ago(1), "Fridge"),
@@ -146,8 +162,6 @@ def initialize_db():
             sample_ingredients,
         )
 
-    c.execute("SELECT COUNT(*) FROM recipes")
-    if c.fetchone()[0] == 0:
         sample_recipes = [
             (
                 "Scrambled Eggs",
@@ -304,9 +318,6 @@ def initialize_db():
             usage_entries,
         )
 
-    # Seed meal plan if empty
-    c.execute("SELECT COUNT(*) FROM meal_plan")
-    if c.fetchone()[0] == 0:
         today = date.today()
         fwd = lambda d: (today + timedelta(days=d)).isoformat()
         sample_plan = [
@@ -343,6 +354,8 @@ def initialize_db():
             "INSERT OR IGNORE INTO meal_plan (plan_date, meal_type, meal, updated_at) VALUES (?, ?, ?, ?)",
             [(d, t, m, datetime.now().isoformat()) for d, t, m in sample_plan],
         )
+
+        c.execute("INSERT INTO settings (key, value) VALUES ('seeded', 'true')")
 
     # Migrate: add updated_date column if it doesn't exist yet
     try:
