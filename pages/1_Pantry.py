@@ -1,9 +1,9 @@
 import streamlit as st
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from database import initialize_db, get_ingredients, get_ingredient_by_name, add_ingredient, delete_ingredient, update_ingredient, clear_all_ingredients, check_and_increment_quota
 from constants import UNITS, AI_DAILY_LIMIT
 from utils import apply_sidebar_style, show_ai_limit_message
-from gemini_client import suggest_storage_locations_bulk
+from gemini_client import suggest_storage_locations_bulk, estimate_expiry_dates
 
 initialize_db()
 
@@ -86,8 +86,10 @@ def _clear_add_rows():
     for rid in st.session_state.get("add_row_ids", []):
         for field in ["name", "amount", "unit", "location", "tip", "location_pending", "expiry"]:
             st.session_state.pop(f"r_{field}_{rid}", None)
-    st.session_state["add_row_ids"] = [0]
-    st.session_state["add_row_counter"] = 1
+    # Use a never-seen-before ID so Streamlit doesn't restore stale widget values
+    new_id = st.session_state.get("add_row_counter", 1)
+    st.session_state["add_row_ids"] = [new_id]
+    st.session_state["add_row_counter"] = new_id + 1
 
 
 @st.dialog("Duplicate Ingredients Found")
@@ -144,7 +146,7 @@ def confirm_duplicates():
 
 
 # Action row
-btn_add_row, btn_suggest, btn_save, _ = st.columns([1.5, 2, 1.5, 4])
+btn_add_row, btn_suggest, btn_expiry, btn_save, _ = st.columns([1.5, 2, 2, 1.5, 2])
 with btn_add_row:
     if st.button("+ Add row", width="stretch"):
         new_id = st.session_state["add_row_counter"]
@@ -173,6 +175,33 @@ with btn_suggest:
                     st.rerun()
                 except Exception as e:
                     st.toast(f"Could not get suggestions: {e}", icon="⚠️")
+with btn_expiry:
+    if st.button("📅 Estimate Expiry", width="stretch"):
+        named_rows = [
+            (rid, st.session_state.get(f"r_name_{rid}", "").strip(),
+             st.session_state.get(f"r_location_{rid}", "Fridge"))
+            for rid in row_ids
+            if st.session_state.get(f"r_name_{rid}", "").strip()
+            and not st.session_state.get(f"r_expiry_{rid}")
+        ]
+        if not named_rows:
+            st.toast("Enter ingredient names first (or all rows already have expiry dates).", icon="⚠️")
+        elif not check_and_increment_quota(AI_DAILY_LIMIT):
+            show_ai_limit_message()
+        else:
+            with st.spinner("Estimating shelf life..."):
+                try:
+                    ingredients_input = [{"name": name, "location": loc} for _, name, loc in named_rows]
+                    results = estimate_expiry_dates(ingredients_input)
+                    today = date.today()
+                    for rid, name, _ in named_rows:
+                        days = results.get(name)
+                        if days:
+                            st.session_state[f"r_expiry_{rid}"] = today + timedelta(days=days)
+                    st.rerun()
+                except Exception as e:
+                    st.toast(f"Could not estimate expiry: {e}", icon="⚠️")
+
 with btn_save:
     if st.button("Save to Pantry", type="primary", width="stretch"):
         rows_to_save = []

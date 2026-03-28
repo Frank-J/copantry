@@ -97,6 +97,31 @@ def extract_recipe_from_pdf(pdf_bytes):
     return _parse_gemini_json(response.text)
 
 
+def estimate_expiry_dates(ingredients):
+    """Estimate shelf life in days for a list of ingredients given their storage location.
+
+    ingredients: list of {"name": str, "location": str}
+    Returns: {"Ingredient Name": days_int, ...}
+    """
+    client = _get_client()
+    lines = "\n".join([f"- {i['name']} (stored in {i['location']})" for i in ingredients])
+    prompt = f"""For each ingredient below, estimate how many days it typically lasts from the purchase date given its storage location.
+
+Ingredients:
+{lines}
+
+Return ONLY valid JSON with no extra text or markdown, using the exact ingredient names as keys:
+{{
+    "Ingredient Name": 7,
+    ...
+}}
+
+Return an integer number of days. Use typical real-world shelf life. If truly non-perishable (e.g. salt, sugar, honey), return 3650."""
+    response = _generate_with_retry(client, model=MODEL_NAME, contents=prompt)
+    result = _parse_gemini_json(response.text)
+    return {k: int(v) for k, v in result.items() if isinstance(v, (int, float))}
+
+
 def suggest_storage_locations_bulk(ingredient_names):
     """Return recommended storage location and tip for multiple ingredients in one call."""
     client = _get_client()
