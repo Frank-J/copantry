@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import datetime, date, timedelta
-from database import initialize_db, get_ingredients, get_ingredient_by_name, add_ingredient, delete_ingredient, update_ingredient, clear_all_ingredients, check_and_increment_quota
+from database import initialize_db, get_ingredients, get_ingredient_by_name, add_ingredient, delete_ingredient, update_ingredient, update_ingredient_expiry, clear_all_ingredients, check_and_increment_quota
 from constants import UNITS, AI_DAILY_LIMIT
 from utils import apply_sidebar_style, show_ai_limit_message
 from gemini_client import suggest_storage_locations_bulk, estimate_expiry_dates
@@ -35,10 +35,10 @@ LOCATION_ICONS = {"Fridge": "🧊", "Freezer": "❄️", "Pantry": "🥫", "Othe
 # ---------------------------------------------------------------------------
 st.subheader("Add Ingredients")
 
-# Initialise row tracking
+# Initialise row tracking — 10 rows by default, empty rows are ignored on save
 if "add_row_ids" not in st.session_state:
-    st.session_state["add_row_ids"] = [0]
-    st.session_state["add_row_counter"] = 1
+    st.session_state["add_row_ids"] = list(range(10))
+    st.session_state["add_row_counter"] = 10
 
 row_ids = st.session_state["add_row_ids"]
 
@@ -86,10 +86,10 @@ def _clear_add_rows():
     for rid in st.session_state.get("add_row_ids", []):
         for field in ["name", "amount", "unit", "location", "tip", "location_pending", "expiry"]:
             st.session_state.pop(f"r_{field}_{rid}", None)
-    # Use a never-seen-before ID so Streamlit doesn't restore stale widget values
-    new_id = st.session_state.get("add_row_counter", 1)
-    st.session_state["add_row_ids"] = [new_id]
-    st.session_state["add_row_counter"] = new_id + 1
+    # Use never-seen-before IDs so Streamlit doesn't restore stale widget values
+    counter = st.session_state.get("add_row_counter", 10)
+    st.session_state["add_row_ids"] = list(range(counter, counter + 10))
+    st.session_state["add_row_counter"] = counter + 10
 
 
 @st.dialog("Duplicate Ingredients Found")
@@ -221,6 +221,22 @@ with btn_save:
         if not rows_to_save:
             st.error("Please enter at least one ingredient name.")
         else:
+            # Auto-estimate expiry for rows with no date entered
+            needs_estimate = [r for r in rows_to_save if not r["expiry_date"]]
+            if needs_estimate and check_and_increment_quota(AI_DAILY_LIMIT):
+                try:
+                    with st.spinner("Estimating expiry dates..."):
+                        est_input = [{"name": r["name"], "location": r["location"]} for r in needs_estimate]
+                        est_results = estimate_expiry_dates(est_input)
+                        today = date.today()
+                        for row in needs_estimate:
+                            days = est_results.get(row["name"])
+                            if days:
+                                row["expiry_date"] = (today + timedelta(days=days)).isoformat()
+                                row["expiry_estimated"] = True
+                except Exception:
+                    pass  # estimation failed silently — save without expiry
+
             conflicts, clean_rows = [], []
             for row in rows_to_save:
                 existing = get_ingredient_by_name(row["name"])
@@ -235,7 +251,8 @@ with btn_save:
                 confirm_duplicates()
             else:
                 for row in clean_rows:
-                    add_ingredient(row["name"], row["amount"], row["unit"], row["location"], row.get("expiry_date"))
+                    add_ingredient(row["name"], row["amount"], row["unit"], row["location"],
+                                   row.get("expiry_date"), row.get("expiry_estimated", False))
                 _clear_add_rows()
                 st.session_state["add_success"] = f"Added: {', '.join(r['name'] for r in clean_rows)}"
                 st.rerun()
@@ -265,9 +282,35 @@ def confirm_clear_pantry():
 # ---------------------------------------------------------------------------
 # Current ingredients list
 # ---------------------------------------------------------------------------
-head_col, btn_col = st.columns([5, 1])
+head_col, btn_est_col, btn_col = st.columns([4, 2, 1])
 with head_col:
     st.subheader("Current Ingredients")
+with btn_est_col:
+    st.write("")
+    if st.button("📅 Estimate Missing Expiry", width="stretch", type="secondary"):
+        ingredients_now = get_ingredients()
+        missing = [i for i in ingredients_now if not i.get("expiry_date")]
+        if not missing:
+            st.toast("All ingredients already have an expiry date.", icon="✅")
+        elif not check_and_increment_quota(AI_DAILY_LIMIT):
+            show_ai_limit_message()
+        else:
+            with st.spinner(f"Estimating expiry for {len(missing)} ingredient(s)..."):
+                try:
+                    est_input = [{"name": i["name"], "location": i.get("location", "Fridge")} for i in missing]
+                    results = estimate_expiry_dates(est_input)
+                    today = date.today()
+                    updated = 0
+                    for ingredient in missing:
+                        days = results.get(ingredient["name"])
+                        if days:
+                            expiry_str = (today + timedelta(days=days)).isoformat()
+                            update_ingredient_expiry(ingredient["id"], expiry_str, expiry_estimated=True)
+                            updated += 1
+                    st.toast(f"Estimated expiry for {updated} ingredient(s).", icon="📅")
+                    st.rerun()
+                except Exception as e:
+                    st.toast(f"Could not estimate expiry: {e}", icon="⚠️")
 with btn_col:
     st.write("")
     if st.button("🗑️ Clear All", width="stretch", type="secondary"):
@@ -298,22 +341,23 @@ def format_dates(added_str, updated_str):
         return ""
 
 
-def format_expiry(expiry_str):
+def format_expiry(expiry_str, estimated=False):
+    est_badge = ' <span style="color:#9ca3af;font-size:0.8em;font-weight:400;">est.</span>' if estimated else ""
     if not expiry_str:
         return '<span style="color:#9ca3af;">—</span>'
     try:
         expiry = date.fromisoformat(expiry_str)
         days_left = (expiry - date.today()).days
         if days_left < 0:
-            return f'<span style="color:#ef4444;font-weight:600;">Expired {abs(days_left)}d ago</span>'
+            return f'<span style="color:#ef4444;font-weight:600;">Expired {abs(days_left)}d ago</span>{est_badge}'
         elif days_left == 0:
-            return '<span style="color:#ef4444;font-weight:600;">Today</span>'
+            return f'<span style="color:#ef4444;font-weight:600;">Today</span>{est_badge}'
         elif days_left == 1:
-            return '<span style="color:#f97316;font-weight:600;">Tomorrow</span>'
+            return f'<span style="color:#f97316;font-weight:600;">Tomorrow</span>{est_badge}'
         elif days_left <= 3:
-            return f'<span style="color:#f59e0b;font-weight:600;">In {days_left}d</span>'
+            return f'<span style="color:#f59e0b;font-weight:600;">In {days_left}d</span>{est_badge}'
         else:
-            return expiry.strftime("%b %d")
+            return expiry.strftime("%b %d") + est_badge
     except Exception:
         return "—"
 
@@ -342,7 +386,7 @@ else:
         with col4:
             st.caption(format_dates(ingredient["added_date"], ingredient.get("updated_date")))
         with col5:
-            st.markdown(format_expiry(ingredient.get("expiry_date")), unsafe_allow_html=True)
+            st.markdown(format_expiry(ingredient.get("expiry_date"), ingredient.get("expiry_estimated", False)), unsafe_allow_html=True)
         with col6:
             if st.button("Edit", key=f"edit_btn_{ingredient['id']}"):
                 st.session_state["editing_id"] = ingredient["id"]
@@ -375,7 +419,10 @@ else:
                 with col_save:
                     if st.form_submit_button("Save", width="stretch"):
                         expiry_str = new_expiry.isoformat() if new_expiry else None
-                        update_ingredient(ingredient["id"], new_amount, new_location, expiry_str)
+                        # Manually setting a date clears the estimated flag
+                        was_estimated = ingredient.get("expiry_estimated", False)
+                        is_still_estimated = was_estimated and (expiry_str == ingredient.get("expiry_date"))
+                        update_ingredient(ingredient["id"], new_amount, new_location, expiry_str, is_still_estimated)
                         del st.session_state["editing_id"]
                         st.rerun()
                 with col_cancel:

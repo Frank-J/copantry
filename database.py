@@ -377,20 +377,25 @@ def initialize_db():
     except sqlite3.OperationalError:
         pass  # column already exists
 
+    try:
+        c.execute("ALTER TABLE ingredients ADD COLUMN expiry_estimated INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
     conn.commit()
     conn.close()
 
 
 # Ingredient operations
 
-def add_ingredient(name, amount, unit, location="Fridge", expiry_date=None):
+def add_ingredient(name, amount, unit, location="Fridge", expiry_date=None, expiry_estimated=False):
     name = name.strip().title()
     conn = get_connection()
     c = conn.cursor()
     now = datetime.now().isoformat()
     c.execute(
-        "INSERT INTO ingredients (name, amount, unit, added_date, updated_date, location, expiry_date) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (name, amount, unit, now, now, location, expiry_date),
+        "INSERT INTO ingredients (name, amount, unit, added_date, updated_date, location, expiry_date, expiry_estimated) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (name, amount, unit, now, now, location, expiry_date, 1 if expiry_estimated else 0),
     )
     conn.commit()
     conn.close()
@@ -399,7 +404,7 @@ def add_ingredient(name, amount, unit, location="Fridge", expiry_date=None):
 def get_ingredients():
     conn = get_connection()
     c = conn.cursor()
-    c.execute("SELECT id, name, amount, unit, added_date, updated_date, location, expiry_date FROM ingredients ORDER BY name")
+    c.execute("SELECT id, name, amount, unit, added_date, updated_date, location, expiry_date, expiry_estimated FROM ingredients ORDER BY name")
     rows = c.fetchall()
     conn.close()
     return [
@@ -412,6 +417,7 @@ def get_ingredients():
             "updated_date": r[5],
             "location": r[6] if r[6] else "Fridge",
             "expiry_date": r[7],
+            "expiry_estimated": bool(r[8]),
         }
         for r in rows
     ]
@@ -448,12 +454,24 @@ def clear_all_ingredients():
     conn.close()
 
 
-def update_ingredient(ingredient_id, amount, location, expiry_date=None):
+def update_ingredient(ingredient_id, amount, location, expiry_date=None, expiry_estimated=False):
     conn = get_connection()
     c = conn.cursor()
     c.execute(
-        "UPDATE ingredients SET amount = ?, location = ?, expiry_date = ?, updated_date = ? WHERE id = ?",
-        (amount, location, expiry_date, datetime.now().isoformat(), ingredient_id),
+        "UPDATE ingredients SET amount = ?, location = ?, expiry_date = ?, expiry_estimated = ?, updated_date = ? WHERE id = ?",
+        (amount, location, expiry_date, 1 if expiry_estimated else 0, datetime.now().isoformat(), ingredient_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def update_ingredient_expiry(ingredient_id, expiry_date, expiry_estimated=False):
+    """Update only the expiry date for an ingredient."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute(
+        "UPDATE ingredients SET expiry_date = ?, expiry_estimated = ?, updated_date = ? WHERE id = ?",
+        (expiry_date, 1 if expiry_estimated else 0, datetime.now().isoformat(), ingredient_id),
     )
     conn.commit()
     conn.close()
