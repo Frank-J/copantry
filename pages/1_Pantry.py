@@ -129,7 +129,7 @@ def confirm_duplicates():
                 st.session_state.pop(key, None)
             _clear_add_rows()
             st.session_state["add_success"] = f"Saved: {', '.join(saved)}"
-            st.rerun()
+            st.rerun(scope="app")
     with col_separate:
         if st.button("Add as separate entries", width="stretch"):
             saved = []
@@ -140,7 +140,7 @@ def confirm_duplicates():
                 st.session_state.pop(key, None)
             _clear_add_rows()
             st.session_state["add_success"] = f"Added: {', '.join(saved)}"
-            st.rerun()
+            st.rerun(scope="app")
 
 
 # Action row
@@ -227,10 +227,10 @@ def confirm_clear_pantry():
     with col_confirm:
         if st.button("Yes, clear everything", type="primary", width="stretch"):
             clear_all_ingredients()
-            st.rerun()
+            st.rerun(scope="app")
     with col_cancel:
         if st.button("Cancel", width="stretch"):
-            st.rerun()
+            st.rerun(scope="app")
 
 
 # ---------------------------------------------------------------------------
