@@ -319,7 +319,7 @@ with btn_col:
 ingredients = get_ingredients()
 
 
-def format_dates(added_str, updated_str):
+def format_dates(added_str, updated_str=None):
     def rel(dt):
         delta = datetime.now() - dt
         if delta.days == 0:
@@ -332,11 +332,7 @@ def format_dates(added_str, updated_str):
             return dt.strftime("%b %d")
     try:
         added = datetime.fromisoformat(added_str)
-        label = f"Added {rel(added)}"
-        if updated_str and updated_str != added_str:
-            updated = datetime.fromisoformat(updated_str)
-            label += f" · Updated {rel(updated)}"
-        return label
+        return f"Added {rel(added)}"
     except Exception:
         return ""
 
