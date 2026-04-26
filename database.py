@@ -1,8 +1,9 @@
+import os
 import sqlite3
 import json
 from datetime import datetime, timedelta, date
 
-DB_PATH = "recipes.db"
+DB_PATH = os.environ.get("DB_PATH", "recipes.db")
 
 # ---------------------------------------------------------------------------
 # Unit conversion helpers
